@@ -52,7 +52,6 @@ Parte do `SOU_Calculadora_v27.xlsx` e corrige o que nele não batia certo.
 ### Por decidir
 - [ ] Classificar as 35 contas de despesa do TOC (proposta num Google Doc)
 - [ ] Template do documento de orçamento: que formato e como se usa
-- [ ] Valor de compra da Melco Summit
 
 ### Substituir as estimativas por valores reais
 - [ ] Preço de compra da tinta, do filme, do pó, do papel, da linha, da entretela e do vinil
