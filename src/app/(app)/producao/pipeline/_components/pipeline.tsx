@@ -67,32 +67,50 @@ export default function Pipeline() {
 
       <SimularPrazo />
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="space-y-6">
         {ATIVAS.map((etapa) => {
           const lista = porEtapa(etapa);
           return (
-            <section key={etapa} className="rounded-xl bg-beige-claro/60 p-3">
-              <h2 className="titulo mb-3 flex items-center justify-between px-1 text-lg text-verde">
+            <section key={etapa} className="cartao overflow-x-auto p-0">
+              <h2 className="titulo flex items-center gap-2 px-5 pt-4 text-lg text-verde">
                 {ETAPAS.find((e) => e.id === etapa)!.nome}
                 <span className="font-sans text-sm text-cinza">{lista.length}</span>
               </h2>
-              <div className="space-y-3">
-                {lista.map((o, i) => (
-                  <Cartao
-                    key={o.id}
-                    o={o}
-                    cliente={cliente(o)}
-                    previsto={previsto(o.id)}
-                    equipa={dados.equipa}
-                    nomeMaquina={nomeMaquina}
-                    podeSubir={etapa !== "pronto" && i > 0}
-                    podeDescer={etapa !== "pronto" && i < lista.length - 1}
-                    aoSubir={() => subir(lista, i, -1)}
-                    aoDescer={() => subir(lista, i, 1)}
-                  />
-                ))}
-                {!lista.length && <p className="px-1 py-6 text-center text-sm text-cinza">Nada aqui.</p>}
-              </div>
+              {lista.length ? (
+                <table className="tabela mt-2">
+                  <thead>
+                    <tr>
+                      <th />
+                      <th>Nº</th>
+                      <th>Cliente</th>
+                      <th>Peças e técnicas</th>
+                      <th className="num">Máquina</th>
+                      <th>Prazo prometido</th>
+                      <th>{etapa === "pronto" ? "Pronto em" : "Previsto"}</th>
+                      <th>Responsável</th>
+                      <th />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {lista.map((o, i) => (
+                      <Linha
+                        key={o.id}
+                        o={o}
+                        cliente={cliente(o)}
+                        previsto={previsto(o.id)}
+                        equipa={dados.equipa}
+                        nomeMaquina={nomeMaquina}
+                        podeSubir={etapa !== "pronto" && i > 0}
+                        podeDescer={etapa !== "pronto" && i < lista.length - 1}
+                        aoSubir={() => subir(lista, i, -1)}
+                        aoDescer={() => subir(lista, i, 1)}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <p className="px-5 pb-4 pt-1 text-sm text-cinza">Nada nesta etapa.</p>
+              )}
             </section>
           );
         })}
@@ -103,7 +121,7 @@ export default function Pipeline() {
   );
 }
 
-function Cartao({
+function Linha({
   o,
   cliente,
   previsto,
@@ -125,70 +143,77 @@ function Cartao({
   aoDescer: () => void;
 }) {
   const p = useDados().parametros;
+  const [aberta, setAberta] = useState(false);
   const r = previsto?.r ?? calcularOrcamento(p, o);
   const etapa = etapaDe(o)!;
   const i = ETAPAS.findIndex((e) => e.id === etapa);
   const anterior = ETAPAS[i - 1];
   const seguinte = ETAPAS[i + 1];
   const prazo = o.producao?.prazo;
+  const pecas = o.linhas.reduce((s, l) => s + l.quantidade, 0);
+  const tecnicas = [...new Set(o.linhas.flatMap((l) => l.aplicacoes.map((a) => NOME_TECNICA[a.tecnica].split(" (")[0])))];
+  const minutosMaquina = Object.values(r.minutosMaquina).reduce((s, m) => s + m, 0);
+  // Os controlos dentro da linha não a abrem nem fecham
+  const parar = (e: React.SyntheticEvent) => e.stopPropagation();
 
   return (
-    <article className={`cartao space-y-2 p-4 ${previsto?.atrasado ? "border-alerta/60" : ""}`}>
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <Link href={`/producao/orcamentos/${o.id}`} className="text-sm font-semibold text-verde hover:underline">
-            {o.numero}
-          </Link>
-          <div className="text-sm">{cliente ?? "sem cliente"}</div>
+    <>
+      <tr
+        className={`cursor-pointer hover:bg-papel ${previsto?.atrasado ? "bg-alerta/5" : ""} ${aberta ? "bg-papel" : ""}`}
+        onClick={() => setAberta(!aberta)}
+      >
+        <td className="w-8 text-center" onClick={parar}>
+          {(podeSubir || podeDescer) && (
+            <div className="flex flex-col leading-none">
+              <button
+                className="text-[10px] text-cinza hover:text-verde disabled:opacity-20"
+                disabled={!podeSubir}
+                onClick={aoSubir}
+                title="Subir prioridade"
+              >
+                ▲
+              </button>
+              <button
+                className="text-[10px] text-cinza hover:text-verde disabled:opacity-20"
+                disabled={!podeDescer}
+                onClick={aoDescer}
+                title="Baixar prioridade"
+              >
+                ▼
+              </button>
+            </div>
+          )}
+        </td>
+        <td className="whitespace-nowrap">
+          <span className={`mr-1 inline-block text-[10px] text-cinza transition-transform ${aberta ? "rotate-90" : ""}`}>▶</span>
+          <span className="font-semibold text-verde">{o.numero}</span>
+        </td>
+        <td>
+          <div className="font-medium">{cliente ?? "sem cliente"}</div>
           {o.titulo && <div className="text-xs text-cinza">{o.titulo}</div>}
-        </div>
-        {(podeSubir || podeDescer) && (
-          <div className="flex flex-col">
-            <button className="px-1 text-xs text-cinza hover:text-verde disabled:opacity-20" disabled={!podeSubir} onClick={aoSubir} title="Subir prioridade">
-              ▲
-            </button>
-            <button className="px-1 text-xs text-cinza hover:text-verde disabled:opacity-20" disabled={!podeDescer} onClick={aoDescer} title="Baixar prioridade">
-              ▼
-            </button>
-          </div>
-        )}
-      </div>
-
-      <ul className="space-y-0.5 text-xs">
-        {o.linhas.map((l) => (
-          <li key={l.id}>
-            <b>{l.quantidade}×</b> {l.descricao || "artigo"}
-            <span className="text-cinza">
-              {" "}
-              · {l.aplicacoes.map((a) => `${NOME_TECNICA[a.tecnica].split(" (")[0]}${a.posicao ? ` ${a.posicao.toLowerCase()}` : ""}`).join(", ")}
-            </span>
-          </li>
-        ))}
-      </ul>
-
-      <div className="flex flex-wrap gap-x-3 text-xs text-cinza">
-        {Object.entries(r.minutosMaquina).map(([id, min]) => (
-          <span key={id}>
-            {nomeMaquina(id)} {horasMin(min)}
-          </span>
-        ))}
-        <span>Operador {horasMin(r.minutosOperador)}</span>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2 text-xs">
-        <label>
-          <span className="rotulo">Prazo prometido</span>
+        </td>
+        <td className="text-xs">
+          <b>{pecas}</b> peças · <span className="text-cinza">{tecnicas.join(", ") || "—"}</span>
+        </td>
+        <td className="num whitespace-nowrap text-xs">{horasMin(minutosMaquina)}</td>
+        <td onClick={parar}>
           <input
             type="date"
-            className="campo py-1 text-xs"
+            className="campo w-36 py-0.5 text-xs"
             value={prazo ?? ""}
             onChange={(e) => atualizarProducao(o.id, { prazo: e.target.value || undefined })}
           />
-        </label>
-        <label>
-          <span className="rotulo">Responsável</span>
+        </td>
+        <td className={`whitespace-nowrap text-xs ${previsto?.atrasado ? "font-semibold text-alerta" : "text-verde"}`}>
+          {previsto
+            ? dataPt(previsto.dataPrevista)
+            : etapa === "pronto" && o.producao?.prontoEm
+              ? dataPt(o.producao.prontoEm)
+              : "—"}
+        </td>
+        <td onClick={parar}>
           <select
-            className="campo py-1 text-xs"
+            className="campo w-36 py-0.5 text-xs"
             value={o.producao?.responsavelId ?? ""}
             onChange={(e) => atualizarProducao(o.id, { responsavelId: e.target.value || undefined })}
           >
@@ -199,48 +224,99 @@ function Cartao({
               </option>
             ))}
           </select>
-        </label>
-      </div>
-
-      {previsto ? (
-        <p className={`text-xs ${previsto.atrasado ? "font-medium text-alerta" : "text-verde"}`}>
-          Pronto previsto: {dataPt(previsto.dataPrevista)}
-          {previsto.atrasado && prazo && ` · passa o prazo de ${dataPt(prazo)}`}
-        </p>
-      ) : (
-        etapa === "pronto" &&
-        o.producao?.prontoEm && <p className="text-xs text-verde">Pronto desde {dataPt(o.producao.prontoEm)}</p>
+        </td>
+        <td className="whitespace-nowrap text-right" onClick={parar}>
+          {anterior && (
+            <button
+              className="mr-1 px-1.5 text-xs text-cinza hover:text-verde"
+              title={`Voltar a ${anterior.nome}`}
+              onClick={() => void moverEtapa(o.id, anterior.id)}
+            >
+              ←
+            </button>
+          )}
+          {seguinte && (
+            <button
+              className="botao-principal px-2 py-0.5 text-xs"
+              onClick={() => {
+                if (seguinte.id === "pronto" && !o.produzidoEm && !confirm("Marcar como pronto? O consumo estimado sai do stock de consumíveis.")) return;
+                void moverEtapa(o.id, seguinte.id);
+              }}
+            >
+              {seguinte.id === "entregue" ? "Entregue ✓" : seguinte.id === "em_producao" ? "Iniciar →" : "Pronto →"}
+            </button>
+          )}
+        </td>
+      </tr>
+      {aberta && (
+        <tr className="bg-papel">
+          <td />
+          <td colSpan={8} className="pb-4">
+            <div className="grid gap-4 md:grid-cols-[2fr_1fr_1fr]">
+              <div>
+                <div className="rotulo">Artigos</div>
+                <ul className="space-y-0.5 text-sm">
+                  {o.linhas.map((l) => (
+                    <li key={l.id}>
+                      <b>{l.quantidade}×</b> {l.descricao || "artigo"}
+                      <ul className="ml-4 text-xs text-cinza">
+                        {l.aplicacoes.map((a) => (
+                          <li key={a.id}>
+                            {NOME_TECNICA[a.tecnica]}
+                            {a.posicao ? ` · ${a.posicao}` : ""}
+                            {a.larguraCm && a.alturaCm ? ` · ${a.larguraCm}×${a.alturaCm} cm` : ""}
+                            {a.tecnica === "bordado" && a.pontos ? ` · ${a.pontos.toLocaleString("pt-PT")} pontos` : ""}
+                            {a.tecnica === "bordado" && a.cores ? ` · ${a.cores} cores` : ""}
+                            {a.pecaEscura ? " · peça escura" : ""}
+                          </li>
+                        ))}
+                      </ul>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <div className="rotulo">Tempos</div>
+                <dl className="space-y-0.5 text-xs">
+                  {Object.entries(r.minutosMaquina).map(([id, min]) => (
+                    <div key={id} className="flex justify-between gap-2">
+                      <dt className="text-cinza">{nomeMaquina(id)}</dt>
+                      <dd>{horasMin(min)}</dd>
+                    </div>
+                  ))}
+                  <div className="flex justify-between gap-2">
+                    <dt className="text-cinza">Operador</dt>
+                    <dd>{horasMin(r.minutosOperador)}</dd>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <dt className="text-cinza">Design</dt>
+                    <dd>{horasMin(r.minutosDesigner)}</dd>
+                  </div>
+                </dl>
+                {previsto?.atrasado && prazo && (
+                  <p className="mt-2 text-xs text-alerta">
+                    Previsto para {dataPt(previsto.dataPrevista)}, depois do prazo de {dataPt(prazo)}.
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <label className="block">
+                  <span className="rotulo">Notas para a produção</span>
+                  <textarea
+                    className="campo min-h-16 text-xs"
+                    value={o.producao?.notas ?? ""}
+                    onChange={(e) => atualizarProducao(o.id, { notas: e.target.value })}
+                  />
+                </label>
+                <Link href={`/producao/orcamentos/${o.id}`} className="botao-secundario w-full text-xs">
+                  Abrir o orçamento
+                </Link>
+              </div>
+            </div>
+          </td>
+        </tr>
       )}
-
-      <textarea
-        className="campo min-h-0 py-1 text-xs"
-        rows={1}
-        placeholder="Notas para a produção"
-        value={o.producao?.notas ?? ""}
-        onChange={(e) => atualizarProducao(o.id, { notas: e.target.value })}
-      />
-
-      <div className="flex justify-between gap-2 pt-1">
-        {anterior ? (
-          <button className="botao-secundario px-2 py-1 text-xs" onClick={() => void moverEtapa(o.id, anterior.id)}>
-            ← {anterior.nome}
-          </button>
-        ) : (
-          <span />
-        )}
-        {seguinte && (
-          <button
-            className="botao-principal px-2 py-1 text-xs"
-            onClick={() => {
-              if (seguinte.id === "pronto" && !o.produzidoEm && !confirm("Marcar como pronto? O consumo estimado sai do stock de consumíveis.")) return;
-              void moverEtapa(o.id, seguinte.id);
-            }}
-          >
-            {seguinte.id === "entregue" ? "Entregue ✓" : `${seguinte.nome} →`}
-          </button>
-        )}
-      </div>
-    </article>
+    </>
   );
 }
 
