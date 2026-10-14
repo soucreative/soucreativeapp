@@ -5,7 +5,7 @@ import { getSessionWithRole } from '@/lib/auth'
 import { calcularOrcamento } from '@/lib/producao/engine'
 import { PARAMETROS_INICIAIS } from '@/lib/producao/defaults'
 import type { Artigo, Cliente, Orcamento, Parametros } from '@/lib/producao/types'
-import { carregarParametros } from './_lib/dados'
+import { artigoDeLinha, carregarParametros } from './_lib/dados'
 
 /** A equipa de produção usa a calculadora; os parâmetros de custo são da gestão. */
 const PRODUCAO = ['management', 'director', 'employee'] as const
@@ -177,4 +177,133 @@ export async function marcarProduzido(id: string): Promise<Resultado<Parametros>
   ])
   if (p.error || q.error) return falha((p.error ?? q.error)!.message)
   return { ok: true, valor: novosParams }
+}
+
+// ── Artigos do TOC Online ─────────────────────────────────────────────────
+
+type ProdutoToc = {
+  id: string
+  attributes: {
+    item_code: string
+    item_description: string
+    purchase_price: number | null
+    estimated_total_cost: number | null
+    sales_price: number | null
+    sales_price_includes_vat: boolean | null
+    is_active: boolean
+  }
+  relationships?: { item_families?: { data: { id: string } | { id: string }[] | null } }
+}
+
+async function lerToc<T>(caminho: string): Promise<T> {
+  const { getValidAccessToken } = await import('@/lib/toc')
+  const token = await getValidAccessToken()
+  const api = process.env.TOC_API_URL ?? 'https://api9.toconline.pt'
+  const res = await fetch(`${api}${caminho}`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+    cache: 'no-store',
+  })
+  if (!res.ok) throw new Error(`TOC respondeu ${res.status} em ${caminho}`)
+  return res.json() as Promise<T>
+}
+
+async function produtosEFamilias() {
+  const [prod, fam] = await Promise.all([
+    lerToc<{ data: ProdutoToc[] }>('/api/products'),
+    lerToc<{ data: { id: string; attributes: { description?: string; name?: string } }[] }>('/api/item_families'),
+  ])
+  const nomeFamilia = new Map(fam.data.map(f => [f.id, (f.attributes.description ?? f.attributes.name ?? f.id).trim()]))
+  const familiaDe = (p: ProdutoToc) => {
+    const d = p.relationships?.item_families?.data
+    const id = Array.isArray(d) ? d[0]?.id : d?.id
+    return id ? nomeFamilia.get(id) ?? 'Sem família' : 'Sem família'
+  }
+  return { produtos: prod.data, familiaDe }
+}
+
+/** Famílias de produtos do TOC, com quantos produtos ativos tem cada uma. */
+export async function familiasToc(): Promise<Resultado<{ nome: string; produtos: number }[]>> {
+  if (!(await getSessionWithRole(PRODUCAO))) return falha('Sem permissão.')
+  try {
+    const { produtos, familiaDe } = await produtosEFamilias()
+    const conta = new Map<string, number>()
+    for (const p of produtos) if (p.attributes.is_active) conta.set(familiaDe(p), (conta.get(familiaDe(p)) ?? 0) + 1)
+    return {
+      ok: true,
+      valor: [...conta.entries()].map(([nome, n]) => ({ nome, produtos: n })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt')),
+    }
+  } catch (e) {
+    return falha(e instanceof Error ? e.message : 'Erro ao ler o TOC.')
+  }
+}
+
+/**
+ * Traz para o catálogo os produtos ativos das famílias escolhidas. O TOC manda
+ * no nome, na família e no custo (preço de compra); o fornecedor, o mínimo e os
+ * portes ficam como foram editados na app. Os artigos criados à mão não mexem.
+ */
+export async function sincronizarArtigosToc(
+  familias: string[],
+  apagarOutros = false,
+): Promise<Resultado<{ artigos: Artigo[]; novos: number; atualizados: number; removidos: number; parametros: Parametros }>> {
+  if (!(await getSessionWithRole(PRODUCAO))) return falha('Sem permissão.')
+  try {
+    const { produtos, familiaDe } = await produtosEFamilias()
+    const escolhidos = produtos.filter(p => p.attributes.is_active && familias.includes(familiaDe(p)))
+    const admin = createAdminClient()
+    const { data: existentes } = await admin.from('prod_artigos').select('*').like('id', 'toc:%')
+    const porId = new Map((existentes ?? []).map(a => [a.id as string, a]))
+
+    let novos = 0
+    let atualizados = 0
+    const linhas = escolhidos.map(p => {
+      const a = p.attributes
+      const id = `toc:${a.item_code}`
+      const antigo = porId.get(id)
+      if (antigo) atualizados++
+      else novos++
+      const custo = Number(a.purchase_price) || Number(a.estimated_total_cost) || 0
+      const pvp = Number(a.sales_price) || 0
+      return {
+        id,
+        nome: a.item_description || a.item_code,
+        categoria: familiaDe(p),
+        fornecedor: antigo?.fornecedor ?? '',
+        custo,
+        minimo: antigo?.minimo ?? 1,
+        portes: antigo?.portes ?? 0,
+        nota: `TOC ${a.item_code}${pvp ? ` · PVP ${pvp.toFixed(2).replace('.', ',')} €${a.sales_price_includes_vat ? ' c/ IVA' : ''}` : ''}`,
+      }
+    })
+    if (linhas.length) {
+      const { error } = await admin.from('prod_artigos').upsert(linhas)
+      if (error) return falha(error.message)
+    }
+
+    // O catálogo do TOC espelha a escolha: saem os produtos de famílias
+    // desmarcadas ou que deixaram de estar ativos. Os criados na app só saem
+    // se for pedido.
+    const ficam = new Set(linhas.map(l => l.id))
+    const { data: todosIds } = await admin.from('prod_artigos').select('id')
+    const sair = (todosIds ?? [])
+      .map(r => r.id as string)
+      .filter(id => !ficam.has(id) && (apagarOutros || id.startsWith('toc:')))
+    for (let i = 0; i < sair.length; i += 200) {
+      const { error } = await admin.from('prod_artigos').delete().in('id', sair.slice(i, i + 200))
+      if (error) return falha(error.message)
+    }
+
+    // Guarda a escolha das famílias e a hora, para a próxima sincronização
+    const params = await carregarParametros()
+    const novosParams = { ...params, tocFamiliasArtigos: familias, tocUltimaSincronizacao: new Date().toISOString() }
+    await admin.from('prod_parametros').upsert({ id: 1, dados: novosParams, updated_at: new Date().toISOString() })
+
+    const { data: todos } = await admin.from('prod_artigos').select('*').order('categoria').order('nome')
+    return {
+      ok: true,
+      valor: { artigos: (todos ?? []).map(artigoDeLinha), novos, atualizados, removidos: sair.length, parametros: novosParams },
+    }
+  } catch (e) {
+    return falha(e instanceof Error ? e.message : 'Erro ao sincronizar com o TOC.')
+  }
 }

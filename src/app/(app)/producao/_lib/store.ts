@@ -152,6 +152,21 @@ export function guardarArtigo(a: Artigo) {
   agendar(`artigo:${a.id}`, () => acoes.semearArtigos(ler().artigos));
 }
 
+/** Traz os produtos do TOC das famílias escolhidas para o catálogo. */
+export async function sincronizarArtigos(familias: string[], apagarOutros = false) {
+  await descarregar();
+  const r = await acoes.sincronizarArtigosToc(familias, apagarOutros);
+  if (!r.ok) {
+    erro = r.erro;
+    avisar();
+    return null;
+  }
+  erro = null;
+  const d = ler();
+  mudar({ ...d, artigos: r.valor.artigos, parametros: { ...d.parametros, ...r.valor.parametros, pessoas: d.parametros.pessoas } });
+  return r.valor;
+}
+
 export function apagarArtigo(id: string) {
   const d = ler();
   mudar({ ...d, artigos: d.artigos.filter((x) => x.id !== id) });

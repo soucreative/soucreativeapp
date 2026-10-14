@@ -156,6 +156,9 @@ export interface Parametros {
   setups: Record<TipoSetup, number>;
   complexidadeBordado: Record<"simples" | "medio" | "complexo", number>; // min de digitalização
   valorMinimoEncomenda: number;
+  // Famílias de produtos do TOC que entram no catálogo de artigos (nomes)
+  tocFamiliasArtigos?: string[];
+  tocUltimaSincronizacao?: string;
   // Horas de trabalho por dia útil, para o pipeline calcular datas previstas
   capacidade: { horasDiaMaquina: number; horasDiaPessoa: number };
   iva: number;

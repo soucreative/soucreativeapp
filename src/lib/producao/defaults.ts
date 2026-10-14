@@ -280,6 +280,12 @@ export const PARAMETROS_INICIAIS: Parametros = {
   complexidadeBordado: { simples: 45, medio: 75, complexo: 120 },
   valorMinimoEncomenda: 0,
   capacidade: { horasDiaMaquina: 7, horasDiaPessoa: 7 },
+  // Peças que se personalizam; ficam de fora consignações, criadores e loja
+  tocFamiliasArtigos: [
+    "T-shirts", "T-shirts manga comprida", "Sweatshirts", "Pólos", "Camisas", "Casacos", "Casacos de malha",
+    "Pullover", "Calças", "Vestuário", "Bonés e Chapéus", "Tote Bags e Sacos", "Necessaires e bolsas",
+    "Cerâmicas", "Garrafas", "Copos", "Agendas e Notebooks", "Bebé e Criança",
+  ],
   iva: 0.23,
   validadeDias: 30,
 };
