@@ -18,6 +18,7 @@ export const NAV_ACCESS: Record<string, UserRole[]> = {
   // Produção — a equipa usa no dia a dia; a gestão supervisiona
   '/producao':               ['management', 'director', 'employee'],
   '/producao/orcamentos':    ['management', 'director', 'employee'],
+  '/producao/pipeline':      ['management', 'director', 'employee'],
   '/producao/clientes':      ['management', 'director', 'employee'],
   '/producao/artigos':       ['management', 'director', 'employee'],
   '/producao/consumiveis':   ['management', 'director', 'employee'],

@@ -7,6 +7,20 @@ export type TipoCliente = "particular" | "empresa" | "parceiro";
 
 export type EstadoOrcamento = "rascunho" | "enviado" | "ganho" | "perdido";
 
+// Depois de ganho, o trabalho passa pela produção até ser entregue
+export type EtapaProducao = "por_iniciar" | "em_producao" | "pronto" | "entregue";
+
+export interface Producao {
+  etapa: EtapaProducao;
+  ordem: number; // prioridade dentro da etapa: menor primeiro
+  prazo?: string; // data prometida ao cliente (AAAA-MM-DD)
+  responsavelId?: string;
+  notas?: string;
+  iniciadoEm?: string;
+  prontoEm?: string;
+  entregueEm?: string;
+}
+
 export type TipoSetup =
   | "completo"
   | "arte_cliente"
@@ -142,6 +156,8 @@ export interface Parametros {
   setups: Record<TipoSetup, number>;
   complexidadeBordado: Record<"simples" | "medio" | "complexo", number>; // min de digitalização
   valorMinimoEncomenda: number;
+  // Horas de trabalho por dia útil, para o pipeline calcular datas previstas
+  capacidade: { horasDiaMaquina: number; horasDiaPessoa: number };
   iva: number;
   validadeDias: number;
 }
@@ -226,5 +242,6 @@ export interface Orcamento {
   congelado?: { total: number; totalComIva: number; margem: number; em: string };
   // Quando a produção termina, o consumo estimado sai do stock.
   produzidoEm?: string;
+  producao?: Producao;
   atualizadoEm: string;
 }

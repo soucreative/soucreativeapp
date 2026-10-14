@@ -8,13 +8,13 @@ import { EstadoGravacao } from "@/app/(app)/producao/_components/estado-gravacao
 import { Avisos, CampoNumero, EtiquetaEstimativa, Interruptor, Rotulado } from "@/app/(app)/producao/_components/campos";
 import { calcularOrcamento, type ResultadoLinha } from "@/lib/producao/engine";
 import { ESTADOS, MOTIVOS_PERDA } from "@/lib/producao/estados";
-import { euros, horasMin, numero, percent } from "@/lib/producao/format";
+import { dataPt, euros, horasMin, numero, percent } from "@/lib/producao/format";
+import { etapaDe, ETAPAS } from "@/lib/producao/agenda";
 import {
   apagarOrcamento,
   duplicarOrcamento,
   guardarCliente,
   atualizarOrcamento,
-  marcarProduzido,
   novoId,
   useCarregado,
   useDados,
@@ -54,7 +54,9 @@ function Editor({ o }: { o: Orcamento }) {
       estado === "rascunho"
         ? undefined
         : (o.congelado ?? { total: r.total, totalComIva: r.totalComIva, margem: r.margem, em: new Date().toISOString() });
-    set({ estado, congelado, ...extra });
+    // Ao ganhar, o trabalho entra no pipeline por iniciar, no fim da fila
+    const producao = estado === "ganho" && !o.producao ? { etapa: "por_iniciar" as const, ordem: Date.now() } : o.producao;
+    set({ estado, congelado, producao, ...extra });
   };
 
   const mudarLinha = (id: string, fn: (l: LinhaOrcamento) => LinhaOrcamento) =>
@@ -117,7 +119,7 @@ function Editor({ o }: { o: Orcamento }) {
         </div>
       </div>
 
-      <BarraEstado o={o} mudarEstado={mudarEstado} aoProduzir={() => void marcarProduzido(o.id)} />
+      <BarraEstado o={o} mudarEstado={mudarEstado} />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
         <fieldset disabled={!editavel} className="min-w-0 space-y-6">
@@ -210,11 +212,9 @@ function Editor({ o }: { o: Orcamento }) {
 function BarraEstado({
   o,
   mudarEstado,
-  aoProduzir,
 }: {
   o: Orcamento;
   mudarEstado: (e: EstadoOrcamento, extra?: Partial<Orcamento>) => void;
-  aoProduzir: () => void;
 }) {
   const [aPerder, setAPerder] = useState(false);
   const [motivo, setMotivo] = useState(MOTIVOS_PERDA[0]);
@@ -268,17 +268,13 @@ function BarraEstado({
       )}
       {o.estado === "ganho" && (
         <>
-          <span className="mr-2 text-cinza">{o.produzidoEm ? "Produção concluída; consumo descontado do stock." : "Em produção."}</span>
-          {!o.produzidoEm && (
-            <button
-              className="botao-principal"
-              onClick={() => {
-                if (confirm("Marcar como produzido? O consumo estimado sai do stock de consumíveis.")) aoProduzir();
-              }}
-            >
-              Marcar como produzido
-            </button>
-          )}
+          <span className="mr-2 text-cinza">
+            Produção: <b className="text-tinta">{ETAPAS.find((e) => e.id === etapaDe(o))?.nome}</b>
+            {o.producao?.prazo && <> · prazo {dataPt(o.producao.prazo)}</>}
+          </span>
+          <Link className="botao-principal" href="/producao/pipeline">
+            Ver no pipeline
+          </Link>
         </>
       )}
       {o.estado === "perdido" && (

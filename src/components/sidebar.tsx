@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, FileText, DollarSign,
   Target, ClipboardList, TrendingUp, LogOut,
   CalendarDays, Database, Gauge, Clock, Star, ScrollText, Calculator,
-  Factory, Contact, Shirt, Package, SlidersHorizontal, Wallet,
+  Factory, Contact, Shirt, Package, SlidersHorizontal, Wallet, SquareKanban,
 } from 'lucide-react'
 import { logout } from '@/app/login/actions'
 import { canAccess, ROLE_LABELS } from '@/lib/permissions'
@@ -22,6 +22,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: '/producao',                label: 'Painel de produção', icon: Factory },
       { href: '/producao/orcamentos',     label: 'Orçamentos',         icon: FileText },
+      { href: '/producao/pipeline',       label: 'Pipeline',           icon: SquareKanban },
       { href: '/producao/tabela-precos',  label: 'Calculadora',        icon: Calculator },
       { href: '/producao/clientes',       label: 'Clientes',           icon: Contact },
       { href: '/producao/artigos',        label: 'Artigos',            icon: Shirt },

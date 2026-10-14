@@ -3,7 +3,7 @@
 import { createContext, useContext, useSyncExternalStore } from "react";
 import * as acoes from "../actions";
 import type { DadosProducao } from "./dados";
-import type { Artigo, Cliente, Orcamento, Parametros } from "@/lib/producao/types";
+import type { Artigo, Cliente, EtapaProducao, Orcamento, Parametros, Producao } from "@/lib/producao/types";
 
 // Os ecrãs leem daqui e escrevem por aqui. A cópia local muda logo (o ecrã não
 // espera pela rede) e a gravação segue para o Supabase por trás. Se falhar,
@@ -224,6 +224,32 @@ export function apagarOrcamento(id: string) {
   pendentes.delete(`orcamento:${id}`);
   mudar({ ...d, orcamentos: d.orcamentos.filter((x) => x.id !== id) });
   void gravar(acoes.apagarOrcamento(id));
+}
+
+// ── Pipeline de produção ──────────────────────────────────────────────────
+
+export function atualizarProducao(id: string, patch: Partial<Producao>) {
+  atualizarOrcamento(id, (o) => ({
+    ...o,
+    producao: { etapa: "por_iniciar", ordem: Date.now(), ...o.producao, ...patch },
+  }));
+}
+
+/**
+ * Muda a etapa e regista quando. Ao passar a "pronto", o consumo estimado sai
+ * do stock (uma vez só, mesmo que o trabalho volte atrás e avance outra vez).
+ */
+export async function moverEtapa(id: string, etapa: EtapaProducao) {
+  const o = ler().orcamentos.find((x) => x.id === id);
+  if (!o) return;
+  const agoraIso = agora();
+  const datas: Partial<Producao> =
+    etapa === "em_producao" ? { iniciadoEm: o.producao?.iniciadoEm ?? agoraIso }
+    : etapa === "pronto" ? { prontoEm: agoraIso }
+    : etapa === "entregue" ? { entregueEm: agoraIso }
+    : {};
+  atualizarProducao(id, { etapa, ordem: Date.now(), ...datas });
+  if ((etapa === "pronto" || etapa === "entregue") && !o.produzidoEm) await marcarProduzido(id);
 }
 
 /** O stock desconta-se no servidor, a partir do orçamento gravado. */

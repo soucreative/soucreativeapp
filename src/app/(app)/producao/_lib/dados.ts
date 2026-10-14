@@ -9,6 +9,8 @@ export interface DadosProducao {
   artigos: Artigo[]
   clientes: Cliente[]
   orcamentos: Orcamento[]
+  // Quem pode ficar responsável por um trabalho no pipeline
+  equipa: { id: string; nome: string; departamento: string | null }[]
 }
 
 type LinhaArtigo = {
@@ -109,11 +111,12 @@ export async function carregarParametros(): Promise<Parametros> {
 
 export async function carregarDadosProducao(): Promise<DadosProducao> {
   const admin = createAdminClient()
-  const [parametros, artigosRes, clientesRes, orcRes] = await Promise.all([
+  const [parametros, artigosRes, clientesRes, orcRes, equipaRes] = await Promise.all([
     carregarParametros(),
     admin.from('prod_artigos').select('*').order('categoria').order('nome'),
     admin.from('prod_clientes').select('*').order('nome'),
     admin.from('prod_orcamentos').select('conteudo').order('created_at', { ascending: false }),
+    admin.from('employees').select('id, first_name, last_name, department').eq('status', 'active').order('first_name'),
   ])
 
   // Catálogo vazio (primeira utilização): mostra os artigos do v27 até alguém gravar.
@@ -126,5 +129,7 @@ export async function carregarDadosProducao(): Promise<DadosProducao> {
     artigos,
     clientes: ((clientesRes.data ?? []) as LinhaCliente[]).map(clienteDeLinha),
     orcamentos: ((orcRes.data ?? []) as { conteudo: Orcamento }[]).map(r => r.conteudo),
+    equipa: ((equipaRes.data ?? []) as { id: string; first_name: string; last_name: string; department: string | null }[])
+      .map(e => ({ id: e.id, nome: `${e.first_name} ${e.last_name}`, departamento: e.department })),
   }
 }

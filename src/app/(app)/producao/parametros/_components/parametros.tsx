@@ -207,6 +207,28 @@ export default function EditorParametros() {
           </p>
         </Seccao>
 
+        <Seccao titulo="Capacidade diária (pipeline)">
+          <div className="grid max-w-md grid-cols-2 gap-3">
+            <Rotulado rotulo="Horas de máquina por dia útil" ajuda="Por cabeça, em cada máquina">
+              <CampoNumero
+                valor={p.capacidade?.horasDiaMaquina}
+                sufixo="h"
+                aoMudar={(n) => mudar((d) => void (d.capacidade = { ...d.capacidade, horasDiaMaquina: n ?? 7 }))}
+              />
+            </Rotulado>
+            <Rotulado rotulo="Horas por pessoa por dia útil" ajuda="Multiplica pelo tempo de cada função">
+              <CampoNumero
+                valor={p.capacidade?.horasDiaPessoa}
+                sufixo="h"
+                aoMudar={(n) => mudar((d) => void (d.capacidade = { ...d.capacidade, horasDiaPessoa: n ?? 7 }))}
+              />
+            </Rotulado>
+          </div>
+          <p className="mt-2 text-xs text-cinza">
+            O pipeline usa estes valores para calcular quando cada trabalho fica pronto. Contam só dias úteis, sem feriados nacionais.
+          </p>
+        </Seccao>
+
         <Seccao titulo="Estrutura (FSE imputados à produção)">
           <table className="tabela">
             <thead>

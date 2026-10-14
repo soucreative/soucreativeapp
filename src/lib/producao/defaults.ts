@@ -279,6 +279,7 @@ export const PARAMETROS_INICIAIS: Parametros = {
   },
   complexidadeBordado: { simples: 45, medio: 75, complexo: 120 },
   valorMinimoEncomenda: 0,
+  capacidade: { horasDiaMaquina: 7, horasDiaPessoa: 7 },
   iva: 0.23,
   validadeDias: 30,
 };

@@ -6,6 +6,7 @@ import { useMemo } from "react";
 import { Titulo } from "@/app/(app)/producao/_components/campos";
 import { calcularOrcamento } from "@/lib/producao/engine";
 import { ESTADOS } from "@/lib/producao/estados";
+import { etapaDe } from "@/lib/producao/agenda";
 import { dataPt, euros, horasMin, numero, percent } from "@/lib/producao/format";
 import { criarOrcamento, hoje, useDados } from "@/app/(app)/producao/_lib/store";
 
@@ -21,7 +22,7 @@ export default function PainelProducao() {
     const total = (x: (typeof calc)[number]) => x.o.congelado?.total ?? x.r.total;
     const porEstado = (e: string) => calc.filter((x) => x.o.estado === e);
 
-    const porProduzir = porEstado("ganho").filter((x) => !x.o.produzidoEm);
+    const porProduzir = porEstado("ganho").filter((x) => ["por_iniciar", "em_producao"].includes(etapaDe(x.o) ?? ""));
     const minutosMaquina: Record<string, number> = {};
     let minutosOperador = 0;
     const consumos: Record<string, number> = {};
@@ -98,7 +99,12 @@ export default function PainelProducao() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <section className="cartao">
-          <h2 className="titulo mb-3 text-lg text-verde">Carga por produzir</h2>
+          <h2 className="titulo mb-3 flex items-baseline justify-between text-lg text-verde">
+            Carga por produzir
+            <Link href="/producao/pipeline" className="font-sans text-xs text-verde underline">
+              ver pipeline
+            </Link>
+          </h2>
           {v.porProduzir.length === 0 ? (
             <p className="text-sm text-cinza">Nada ganho à espera de produção.</p>
           ) : (
