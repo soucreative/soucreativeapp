@@ -42,26 +42,28 @@ export default function Pipeline() {
         Pipeline de produção
       </Titulo>
 
-      <section className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Carga na fila: uma faixa, para as tabelas ficarem à vista */}
+      <section className="cartao mb-4 flex flex-wrap items-center gap-x-6 gap-y-2 py-3 text-sm">
+        <span className="text-xs font-medium text-cinza">Carga na fila</span>
         {plano.carga.map((c) => (
-          <div key={c.recurso.id} className="cartao py-4">
-            <div className="text-xs text-cinza">{c.recurso.nome}</div>
-            <div className="titulo mt-1 text-2xl text-verde">{horasMin(c.minutos)}</div>
-            <div className="text-xs text-cinza">
-              {c.recurso.minutosDia > 0
-                ? c.ocupadoAte
-                  ? `${c.dias.toFixed(1).replace(".", ",")} dias de trabalho · ocupado até ${dataPt(c.ocupadoAte)}`
-                  : "sem trabalho na fila"
-                : "sem pessoas registadas: ver Parâmetros"}
-            </div>
-          </div>
+          <span
+            key={c.recurso.id}
+            title={
+              c.recurso.minutosDia > 0
+                ? `${c.dias.toFixed(1).replace(".", ",")} dias de trabalho`
+                : "Sem pessoas registadas: ver Parâmetros"
+            }
+          >
+            {c.recurso.nome} <b className="text-verde">{horasMin(c.minutos)}</b>
+            <span className="text-xs text-cinza">
+              {c.recurso.minutosDia <= 0 ? " · sem pessoas" : c.ocupadoAte ? ` · até ${dataPt(c.ocupadoAte)}` : ""}
+            </span>
+          </span>
         ))}
         {atrasados > 0 && (
-          <div className="cartao border-alerta/40 bg-alerta/5 py-4">
-            <div className="text-xs text-alerta">Em risco</div>
-            <div className="titulo mt-1 text-2xl text-alerta">{atrasados}</div>
-            <div className="text-xs text-alerta">trabalho(s) com data prevista depois do prazo prometido</div>
-          </div>
+          <span className="ml-auto rounded-full bg-alerta/10 px-3 py-0.5 text-xs font-medium text-alerta">
+            {atrasados} {atrasados === 1 ? "trabalho passa" : "trabalhos passam"} o prazo prometido
+          </span>
         )}
       </section>
 
