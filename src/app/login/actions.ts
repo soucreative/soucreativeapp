@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { headers } from 'next/headers'
+import { siteUrl } from '@/lib/site-url'
 import { redirect } from 'next/navigation'
 
 export async function login(_: unknown, formData: FormData) {
@@ -20,17 +20,6 @@ export async function logout() {
   const supabase = await createClient()
   await supabase.auth.signOut()
   redirect('/login')
-}
-
-// O endereço de volta vem do próprio pedido: assim o login funciona igual em
-// localhost e na Vercel, sem depender de NEXT_PUBLIC_APP_URL estar certo.
-async function siteUrl() {
-  const h = await headers()
-  const origin = h.get('origin')
-  if (origin) return origin
-  const host = h.get('x-forwarded-host') ?? h.get('host')
-  const proto = h.get('x-forwarded-proto') ?? 'https'
-  return host ? `${proto}://${host}` : (process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3200')
 }
 
 export async function loginWithGoogle() {

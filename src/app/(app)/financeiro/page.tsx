@@ -15,6 +15,7 @@ import TocSyncSection from './_components/toc-sync-section'
 import CostPerHourSection from './_components/cost-per-hour-section'
 import { fetchMonthlyHourTotals } from '@/lib/horas'
 import { workingDaysBetween } from '@/lib/holidays'
+import { siteUrl } from '@/lib/site-url'
 
 export const dynamic = 'force-dynamic'
 
@@ -141,8 +142,7 @@ export default async function FinanceiroPage({
   const isAdmin    = !!emp && ['master', 'admin', 'management'].includes(emp.app_role)
   const tocToken   = isAdmin ? await getStoredToken() : null
   const tocConnected = !!tocToken
-  const siteUrl      = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3200'
-  const tocAuthUrl   = buildAuthUrl(`${siteUrl}/api/toc/callback`)
+  const tocAuthUrl   = buildAuthUrl(`${await siteUrl()}/api/toc/callback`)
 
 
   return (

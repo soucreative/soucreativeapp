@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { exchangeCodeForToken, saveToken } from '@/lib/toc'
 import { getCurrentEmployee } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
+import { siteUrl } from '@/lib/site-url'
 
 // POST /api/toc/exchange  { code: string }
 // Exchanges an authorization code using the Postman redirect_uri that is
@@ -21,8 +22,7 @@ export async function POST(request: NextRequest) {
   if (!code) return NextResponse.json({ error: 'Código em falta' }, { status: 400 })
 
   try {
-    const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3200'
-    const tokens  = await exchangeCodeForToken(code, `${siteUrl}/api/toc/callback`)
+    const tokens  = await exchangeCodeForToken(code, `${await siteUrl()}/api/toc/callback`)
     await saveToken(tokens)
     return NextResponse.json({ ok: true })
   } catch (err) {

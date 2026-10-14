@@ -6,6 +6,7 @@ import { getCurrentEmployee, getSessionWithRole } from '@/lib/auth'
 import { isFullAccess } from '@/lib/permissions'
 import { revalidatePath } from 'next/cache'
 import type { UserRole } from '@/types/database'
+import { siteUrl } from '@/lib/site-url'
 
 export async function upsertContract(_: unknown, formData: FormData) {
   if (!(await getSessionWithRole(['management']))) return { error: 'Sem permissão.' }
@@ -282,7 +283,7 @@ export async function inviteEmployee(_: unknown, formData: FormData) {
 
   // Send Supabase Auth invite
   const { data, error } = await supabase.auth.admin.inviteUserByEmail(email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'}/auth/callback`,
+    redirectTo: `${await siteUrl()}/auth/callback?next=/auth/set-password`,
   })
 
   let authUserId: string | null = null
@@ -325,11 +326,10 @@ export async function resendInvite(_: unknown, formData: FormData) {
   const email = formData.get('email') as string
   if (!email) return { error: 'Email não encontrado no perfil do colaborador.' }
 
-  const siteUrl  = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3200'
   const supabase = await createClient()
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${siteUrl}/auth/callback?next=/auth/set-password`,
+    redirectTo: `${await siteUrl()}/auth/callback?next=/auth/set-password`,
   })
 
   if (error) return { error: `Erro ao reenviar: ${error.message}` }

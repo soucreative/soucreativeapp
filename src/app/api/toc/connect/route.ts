@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { buildAuthUrl } from '@/lib/toc'
 import { getCurrentEmployee } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
+import { siteUrl } from '@/lib/site-url'
 
 export async function GET(request: NextRequest) {
   // Only admins/management can connect TOC Online
@@ -14,8 +15,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Sem permissão' }, { status: 403 })
   }
 
-  const siteUrl     = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3200'
-  const redirectUri = `${siteUrl}/api/toc/callback`
+  const redirectUri = `${await siteUrl()}/api/toc/callback`
   const authUrl     = buildAuthUrl(redirectUri)
 
   return NextResponse.redirect(authUrl)

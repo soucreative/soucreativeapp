@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { exchangeCodeForToken, saveToken } from '@/lib/toc'
 import { getSessionWithRole } from '@/lib/auth'
+import { siteUrl } from '@/lib/site-url'
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
@@ -22,8 +23,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const siteUrl     = process.env.NEXT_PUBLIC_APP_URL ?? origin
-    const redirectUri = `${siteUrl}/api/toc/callback`
+    const redirectUri = `${await siteUrl()}/api/toc/callback`
 
     const tokens = await exchangeCodeForToken(code, redirectUri)
     await saveToken(tokens)

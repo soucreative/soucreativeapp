@@ -6,6 +6,7 @@ import { isFullAccess } from '@/lib/permissions'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import type { EmployeeInsert, UserRole } from '@/types/database'
+import { siteUrl } from '@/lib/site-url'
 
 // ── Quick-edit a single field on an employee row ───────────────────────────
 const ALLOWED_QUICK_FIELDS = new Set(['role', 'department', 'status', 'work_regime', 'start_date'])
@@ -86,10 +87,9 @@ export async function createEmployee(_: unknown, formData: FormData) {
   // Enviar convite por email para o colaborador definir a sua password.
   // Sem email não há convite a enviar — o colaborador fica criado na mesma.
   if (employee.email) {
-    const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3200'
     const { data: inviteData, error: inviteError } = await supabase.auth.admin.inviteUserByEmail(
       employee.email,
-      { redirectTo: `${siteUrl}/auth/callback?next=/auth/set-password` }
+      { redirectTo: `${await siteUrl()}/auth/callback?next=/auth/set-password` }
     )
 
     if (!inviteError && inviteData?.user?.id) {

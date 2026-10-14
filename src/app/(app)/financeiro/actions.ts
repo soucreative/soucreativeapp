@@ -10,6 +10,7 @@ import { estimatePayrollByYear } from '@/lib/payroll'
 import type {
   PayrollAbsenceRow, PayrollCompRow, PayrollContractRow, PayrollEmpRow, PayrollTaxRow,
 } from '@/lib/payroll'
+import { siteUrl } from '@/lib/site-url'
 import { exchangeCodeForToken, saveToken } from '@/lib/toc'
 
 /** Quem abre o Financeiro é quem pode escrever nele */
@@ -27,8 +28,7 @@ export async function exchangeTocCode(_: unknown, formData: FormData) {
   const code = (formData.get('code') as string)?.trim()
   if (!code) return { error: 'Código obrigatório.' }
 
-  const siteUrl     = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3200'
-  const redirectUri = `${siteUrl}/api/toc/callback`
+  const redirectUri = `${await siteUrl()}/api/toc/callback`
 
   try {
     const tokens = await exchangeCodeForToken(code, redirectUri)
