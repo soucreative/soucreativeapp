@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useTransition, KeyboardEvent } from 'react'
+import { useState, useRef, useSyncExternalStore, useTransition, KeyboardEvent } from 'react'
 import Link from 'next/link'
 import { quickUpdateEmployee } from '../actions'
 import type { Employee } from '@/types/database'
@@ -8,7 +8,29 @@ import { DEPARTMENTS } from '@/lib/departments'
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
-const DEPT_OPTIONS = ['Management', ...DEPARTMENTS]
+const DEPT_OPTIONS = [...DEPARTMENTS]
+
+// ── Resultado da última gravação ───────────────────────────────────────────
+// As células gravam no momento; este aviso por cima da tabela diz se correu
+// bem, em vez de o valor voltar atrás em silêncio.
+
+type Resultado = { ok: boolean; texto: string } | null
+let ultimo: Resultado = null
+const ouvintes = new Set<() => void>()
+function anunciar(r: { error?: string | null }) {
+  const hora = new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })
+  ultimo = r.error ? { ok: false, texto: `Não foi possível gravar: ${r.error}` } : { ok: true, texto: `Gravado às ${hora}` }
+  for (const f of ouvintes) f()
+}
+function AvisoGravacao() {
+  const r = useSyncExternalStore(
+    f => { ouvintes.add(f); return () => { ouvintes.delete(f) } },
+    () => ultimo,
+    () => null,
+  )
+  if (!r) return <p className="mb-2 text-xs text-slate-400">Clique num valor para o mudar: grava no momento.</p>
+  return <p className={`mb-2 text-xs ${r.ok ? 'text-emerald-600' : 'text-red-600'}`}>{r.ok ? '✓ ' : ''}{r.texto}</p>
+}
 
 const POSITION_OPTIONS = [
   { value: 'management',          label: 'Management' },
@@ -55,6 +77,7 @@ function QuickText({
     startTransition(async () => {
       const res = await quickUpdateEmployee(id, field, draft)
       setSaving(false)
+      anunciar(res)
       if (res.error) {
         setErrored(true)
         setTimeout(() => setErrored(false), 1500)
@@ -126,6 +149,7 @@ function QuickSelect({
     startTransition(async () => {
       const res = await quickUpdateEmployee(id, field, next)
       setSaving(false)
+      anunciar(res)
       if (res.error) setDisplay(prev) // revert on error
     })
   }
@@ -240,6 +264,8 @@ export default function EmployeesTable({
   readOnly?: boolean
 }) {
   return (
+    <>
+    {!readOnly && <AvisoGravacao />}
     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
       <table className="w-full text-sm">
         <thead>
@@ -340,5 +366,6 @@ export default function EmployeesTable({
         </tbody>
       </table>
     </div>
+    </>
   )
 }

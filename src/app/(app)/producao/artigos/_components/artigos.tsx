@@ -4,6 +4,7 @@ import { useState } from "react";
 import { CampoNumero, Titulo } from "@/app/(app)/producao/_components/campos";
 import { apagarArtigo, guardarArtigo, novoId, useDados } from "@/app/(app)/producao/_lib/store";
 import type { Artigo } from "@/lib/producao/types";
+import { EstadoGravacao } from "@/app/(app)/producao/_components/estado-gravacao";
 
 export default function ListaArtigos() {
   const dados = useDados();
@@ -20,6 +21,8 @@ export default function ListaArtigos() {
       <Titulo
         sub="Peças em branco (t-shirts, toalhas, canecas…). O custo é sem IVA, tal como vem na fatura do fornecedor."
         acoes={
+          <>
+          <EstadoGravacao />
           <button
             className="botao-principal"
             onClick={() =>
@@ -28,6 +31,7 @@ export default function ListaArtigos() {
           >
             + Novo artigo
           </button>
+          </>
         }
       >
         Artigos

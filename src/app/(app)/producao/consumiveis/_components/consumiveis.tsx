@@ -6,6 +6,7 @@ import { CampoNumero, EtiquetaEstimativa, Titulo } from "@/app/(app)/producao/_c
 import { calcularOrcamento } from "@/lib/producao/engine";
 import { euros, eurosFino, numero } from "@/lib/producao/format";
 import { atualizarStock, useDados } from "@/app/(app)/producao/_lib/store";
+import { EstadoGravacao } from "@/app/(app)/producao/_components/estado-gravacao";
 
 export default function Consumiveis() {
   const dados = useDados();
@@ -25,7 +26,7 @@ export default function Consumiveis() {
 
   return (
     <>
-      <Titulo sub="Stock por máquina. O consumo dos orçamentos ganhos fica reservado e sai do stock quando a produção é marcada como feita.">
+      <Titulo acoes={<EstadoGravacao />} sub="Stock por máquina. O consumo dos orçamentos ganhos fica reservado e sai do stock quando a produção é marcada como feita.">
         Consumíveis
       </Titulo>
 

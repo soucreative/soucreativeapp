@@ -8,6 +8,7 @@ import { ESTADOS } from "@/lib/producao/estados";
 import { dataPt, euros, percent } from "@/lib/producao/format";
 import { criarOrcamento, guardarCliente, useDados } from "@/app/(app)/producao/_lib/store";
 import type { Cliente, TipoCliente } from "@/lib/producao/types";
+import { EstadoGravacao } from "@/app/(app)/producao/_components/estado-gravacao";
 
 export default function FichaCliente() {
   const { id } = useParams<{ id: string }>();
@@ -41,6 +42,8 @@ export default function FichaCliente() {
       </Link>
       <Titulo
         acoes={
+          <>
+          <EstadoGravacao forcar={() => guardarCliente(c)} />
           <button
             className="botao-principal"
             onClick={async () => {
@@ -50,6 +53,7 @@ export default function FichaCliente() {
           >
             + Novo orçamento para este cliente
           </button>
+          </>
         }
       >
         {c.nome}
