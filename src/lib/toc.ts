@@ -14,6 +14,14 @@ const TOC_API_URL   = process.env.TOC_API_URL   ?? 'https://api9.toconline.pt'
 const CLIENT_ID     = process.env.TOC_CLIENT_ID!
 const CLIENT_SECRET = process.env.TOC_CLIENT_SECRET!
 
+/**
+ * Endereço de regresso registado no cliente da API do TOC. O TOC regista o do
+ * Postman e não deixa mudá-lo; na troca do código exige que coincida, senão
+ * responde unauthorized_client. Quem autoriza cola depois o endereço do
+ * Postman no Financeiro (passo 2).
+ */
+export const TOC_REDIRECT_URI = process.env.TOC_REDIRECT_URI ?? 'https://oauth.pstmn.io/v1/callback'
+
 // ── Token storage (single row in toc_tokens) ──────────────────────────────
 
 export type TocTokenRow = {

@@ -5,7 +5,7 @@ import type { Objective, FinancialRecord, CostCenterRecord } from '@/types/datab
 import { DEPARTMENTS } from '@/lib/departments'
 import { getCurrentEmployee } from '@/lib/auth'
 import { canAccess } from '@/lib/permissions'
-import { getStoredToken, buildAuthUrl } from '@/lib/toc'
+import { getStoredToken, buildAuthUrl, TOC_REDIRECT_URI } from '@/lib/toc'
 import { estimatePayrollByYear } from '@/lib/payroll'
 import type { PayrollEmpRow, PayrollCompRow, PayrollTaxRow, PayrollAbsenceRow, PayrollContractRow } from '@/lib/payroll'
 import RevenueTargetsForm from './_components/revenue-targets-form'
@@ -15,7 +15,6 @@ import TocSyncSection from './_components/toc-sync-section'
 import CostPerHourSection from './_components/cost-per-hour-section'
 import { fetchMonthlyHourTotals } from '@/lib/horas'
 import { workingDaysBetween } from '@/lib/holidays'
-import { siteUrl } from '@/lib/site-url'
 
 export const dynamic = 'force-dynamic'
 
@@ -142,7 +141,7 @@ export default async function FinanceiroPage({
   const isAdmin    = !!emp && ['master', 'admin', 'management'].includes(emp.app_role)
   const tocToken   = isAdmin ? await getStoredToken() : null
   const tocConnected = !!tocToken
-  const tocAuthUrl   = buildAuthUrl(`${await siteUrl()}/api/toc/callback`)
+  const tocAuthUrl   = buildAuthUrl(TOC_REDIRECT_URI)
 
 
   return (

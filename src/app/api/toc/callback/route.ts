@@ -1,7 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { exchangeCodeForToken, saveToken } from '@/lib/toc'
+import { exchangeCodeForToken, saveToken, TOC_REDIRECT_URI } from '@/lib/toc'
 import { getSessionWithRole } from '@/lib/auth'
-import { siteUrl } from '@/lib/site-url'
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
@@ -23,7 +22,9 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const redirectUri = `${await siteUrl()}/api/toc/callback`
+    // Só chega aqui se o cliente do TOC tiver este endereço registado
+    // (TOC_REDIRECT_URI); por omissão o regresso é o do Postman.
+    const redirectUri = TOC_REDIRECT_URI
 
     const tokens = await exchangeCodeForToken(code, redirectUri)
     await saveToken(tokens)
