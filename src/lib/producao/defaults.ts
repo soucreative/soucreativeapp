@@ -5,7 +5,7 @@ import type { Artigo, Parametros } from "./types";
 // Pessoas, horas e FSE vêm do SOU_Calculadora_v27.xlsx (folha Custo hora).
 
 export const PARAMETROS_INICIAIS: Parametros = {
-  versao: 1,
+  versao: 2,
   empresa: {
     nome: "SOU Creative",
     nif: "",
@@ -22,7 +22,7 @@ export const PARAMETROS_INICIAIS: Parametros = {
     {
       id: "designer",
       nome: "Designer",
-      modo: "ordenado",
+      modo: "colaboradores",
       valorMensal: 1300,
       meses: 14,
       encargosPct: 0.2475,
@@ -34,7 +34,7 @@ export const PARAMETROS_INICIAIS: Parametros = {
     {
       id: "operador",
       nome: "Operador de máquina",
-      modo: "custo_total",
+      modo: "colaboradores",
       valorMensal: 1600,
       meses: 12,
       encargosPct: 0,
@@ -303,6 +303,11 @@ export const ARTIGOS_INICIAIS: Artigo[] = [
  */
 export function completarParametros(guardado: Partial<Parametros>): Parametros {
   const base = structuredClone(PARAMETROS_INICIAIS);
+  // Versão 2: as pessoas passam a contar a partir dos colaboradores registados.
+  // Os valores manuais ficam guardados como alternativa.
+  if ((guardado.versao ?? 1) < 2 && guardado.pessoas) {
+    guardado = { ...guardado, versao: 2, pessoas: guardado.pessoas.map((p) => ({ ...p, modo: "colaboradores" as const })) };
+  }
   const juntarPorId = <T extends { id: string }>(g: T[] | undefined, b: T[]) =>
     g ? [...g, ...b.filter((x) => !g.some((y) => y.id === x.id))] : b;
   return {

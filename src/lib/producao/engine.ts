@@ -44,7 +44,18 @@ export const NOME_SETUP: Record<TipoSetup, string> = {
 
 // ── Custo da hora ─────────────────────────────────────────────────────────
 
+/** Os colaboradores registados contam quando existem; sem ninguém, valem os valores manuais. */
+export function usaRegisto(p: Pessoa): boolean {
+  return p.modo === "colaboradores" && !!p.registo && p.registo.fte > 0;
+}
+
+/** Fatia do tempo de uma pessoa a tempo inteiro que a função representa na produção. */
+export function tempoProducao(p: Pessoa): number {
+  return usaRegisto(p) ? p.registo!.fte : p.pctProducao;
+}
+
 export function custoAnualPessoa(p: Pessoa): number {
+  if (usaRegisto(p)) return p.registo!.custoAnual;
   if (p.modo === "custo_total") return p.valorMensal * p.meses + p.outrosAnual;
   return p.valorMensal * p.meses * (1 + p.encargosPct) + p.subsidioAnual + p.outrosAnual;
 }
@@ -69,16 +80,20 @@ export function fseAnual(params: Parametros): number {
 export function quotaFseHora(params: Parametros): number {
   const horas =
     horasFaturaveisPorPessoa(params) *
-    params.pessoas.reduce((s, p) => s + p.pctProducao, 0);
+    params.pessoas.reduce((s, p) => s + tempoProducao(p), 0);
   return horas > 0 ? fseAnual(params) / horas : 0;
 }
 
 export function custoHoraPessoa(params: Parametros, id: Pessoa["id"]): number {
   const p = params.pessoas.find((x) => x.id === id);
   if (!p) return 0;
-  const horas = horasFaturaveisPorPessoa(params) * p.pctProducao;
+  // Com o registo, o custo anual já é só o das pessoas da função e o FTE dá as
+  // horas; à mão, o custo de uma pessoa entra na proporção do tempo na produção.
+  const pct = tempoProducao(p);
+  const horas = horasFaturaveisPorPessoa(params) * pct;
   if (horas <= 0) return 0;
-  return (custoAnualPessoa(p) * p.pctProducao) / horas + quotaFseHora(params);
+  const custo = usaRegisto(p) ? custoAnualPessoa(p) : custoAnualPessoa(p) * pct;
+  return custo / horas + quotaFseHora(params);
 }
 
 export function precoHora(params: Parametros, id: Pessoa["id"]): number {

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { AplicacaoEditor, novaAplicacao } from "@/app/(app)/producao/_components/aplicacao-editor";
+import { EstadoGravacao } from "@/app/(app)/producao/_components/estado-gravacao";
 import { Avisos, CampoNumero, EtiquetaEstimativa, Interruptor, Rotulado } from "@/app/(app)/producao/_components/campos";
 import { calcularOrcamento, type ResultadoLinha } from "@/lib/producao/engine";
 import { ESTADOS, MOTIVOS_PERDA } from "@/lib/producao/estados";
@@ -89,6 +90,7 @@ function Editor({ o }: { o: Orcamento }) {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
+          {editavel && <EstadoGravacao forcar={() => atualizarOrcamento(o.id, (x) => x)} />}
           <Link className="botao-secundario" href={`/producao/orcamentos/${o.id}/documento`}>
             Documento / PDF
           </Link>

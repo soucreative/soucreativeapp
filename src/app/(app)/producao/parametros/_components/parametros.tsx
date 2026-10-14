@@ -13,17 +13,11 @@ import {
   NOME_TECNICA,
   quotaFseHora,
   tipoClienteDe,
+  usaRegisto,
 } from "@/lib/producao/engine";
 import { euros, eurosFino, numero, percent } from "@/lib/producao/format";
-import {
-  atualizarParametros,
-  descarregar,
-  novoId,
-  reporParametros,
-  useDados,
-  useErroGravacao,
-  useEstadoGravacao,
-} from "@/app/(app)/producao/_lib/store";
+import { atualizarParametros, novoId, reporParametros, useDados } from "@/app/(app)/producao/_lib/store";
+import { EstadoGravacao } from "@/app/(app)/producao/_components/estado-gravacao";
 import type { TipoSetup } from "@/lib/producao/types";
 
 const NOMES_K: Record<string, string> = {
@@ -70,7 +64,7 @@ export default function EditorParametros() {
         sub="Tudo o que muda o preço vive aqui. Os campos a amarelo são estimativas de partida, a substituir pelos valores reais."
         acoes={
           <>
-          <EstadoGravacao />
+          <EstadoGravacao forcar={() => atualizarParametros(() => {})} />
           <button
             className="botao-perigo"
             onClick={() => confirm("Repor todos os parâmetros nos valores de partida? Perde as alterações feitas.") && void reporParametros()}
@@ -88,6 +82,9 @@ export default function EditorParametros() {
           <div className="grid gap-4 lg:grid-cols-2">
             {p.pessoas.map((pe, i) => {
               const custoH = custoHoraPessoa(p, pe.id);
+              const registo = pe.registo;
+              const doRegisto = usaRegisto(pe);
+              const manual = !doRegisto;
               return (
                 <div key={pe.id} className="rounded-lg border border-linha p-4">
                   <h3 className="mb-3 font-medium">{pe.nome}</h3>
@@ -98,17 +95,54 @@ export default function EditorParametros() {
                         value={pe.modo}
                         onChange={(e) => mudar((d) => void (d.pessoas[i].modo = e.target.value as typeof pe.modo))}
                       >
-                        <option value="ordenado">Ordenado + encargos</option>
-                        <option value="custo_total">Custo total mensal</option>
+                        <option value="colaboradores">Colaboradores registados</option>
+                        <option value="ordenado">À mão: ordenado + encargos</option>
+                        <option value="custo_total">À mão: custo total mensal</option>
                       </select>
                     </Rotulado>
-                    <Rotulado rotulo={pe.modo === "ordenado" ? "Ordenado base mensal" : "Custo total mensal"}>
+                    <Rotulado rotulo="Preço de venda/hora">
+                      <CampoNumero valor={pe.precoVendaHora} sufixo="€" aoMudar={(n) => mudar((d) => void (d.pessoas[i].precoVendaHora = n ?? 0))} />
+                    </Rotulado>
+                  </div>
+
+                  {pe.modo === "colaboradores" && (
+                    <div className="mt-3 rounded-md bg-papel p-3 text-sm">
+                      {registo && registo.pessoas.length > 0 ? (
+                        <>
+                          <ul className="space-y-0.5">
+                            {registo.pessoas.map((c) => (
+                              <li key={c.nome} className="flex justify-between gap-3">
+                                <span>
+                                  {c.nome}
+                                  {c.fte < 1 && <span className="text-cinza"> · {percent(c.fte)} do tempo</span>}
+                                </span>
+                                <span className="tabular-nums text-cinza">{euros(c.custoAnual)}/ano</span>
+                              </li>
+                            ))}
+                          </ul>
+                          <p className="mt-2 text-xs text-cinza">
+                            Colaboradores ativos em {registo.departamento}: custo dos próximos 12 meses com o salário atual (TSU,
+                            subsídios e subsídio de alimentação), como na Remuneração.
+                          </p>
+                        </>
+                      ) : (
+                        <p className="text-mostarda">
+                          Não há colaboradores ativos em {registo?.departamento ?? "este departamento"} com remuneração registada. Enquanto
+                          não houver, contam os valores à mão abaixo.
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {manual && (
+                  <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    <Rotulado rotulo={pe.modo === "custo_total" ? "Custo total mensal" : "Ordenado base mensal"}>
                       <CampoNumero valor={pe.valorMensal} sufixo="€" aoMudar={(n) => mudar((d) => void (d.pessoas[i].valorMensal = n ?? 0))} />
                     </Rotulado>
                     <Rotulado rotulo="Nº de meses">
                       <CampoNumero valor={pe.meses} aoMudar={(n) => mudar((d) => void (d.pessoas[i].meses = n ?? 12))} />
                     </Rotulado>
-                    {pe.modo === "ordenado" && (
+                    {pe.modo !== "custo_total" && (
                       <>
                         <Rotulado rotulo="TSU + seguro">
                           <CampoNumero valor={pe.encargosPct} percentagem aoMudar={(n) => mudar((d) => void (d.pessoas[i].encargosPct = n ?? 0))} />
@@ -124,10 +158,8 @@ export default function EditorParametros() {
                     <Rotulado rotulo="Tempo na produção">
                       <CampoNumero valor={pe.pctProducao} percentagem aoMudar={(n) => mudar((d) => void (d.pessoas[i].pctProducao = n ?? 1))} />
                     </Rotulado>
-                    <Rotulado rotulo="Preço de venda/hora">
-                      <CampoNumero valor={pe.precoVendaHora} sufixo="€" aoMudar={(n) => mudar((d) => void (d.pessoas[i].precoVendaHora = n ?? 0))} />
-                    </Rotulado>
                   </div>
+                  )}
                   <div className="mt-3 flex flex-wrap gap-x-5 text-sm">
                     <span>Custo anual {euros(custoAnualPessoa(pe))}</span>
                     <span>
@@ -500,28 +532,3 @@ function Seccao({ titulo, children }: { titulo: string; children: ReactNode }) {
   );
 }
 
-function EstadoGravacao() {
-  const { estado, em } = useEstadoGravacao();
-  const erro = useErroGravacao();
-  const hora = em ? new Date(em).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" }) : null;
-  const texto = erro
-    ? "Erro ao gravar"
-    : estado === "a_gravar"
-      ? "A gravar…"
-      : estado === "pendente"
-        ? "Alterações por gravar"
-        : hora
-          ? `Gravado às ${hora}`
-          : "Tudo gravado";
-  return (
-    <div className="flex items-center gap-2">
-      <span className={`text-xs ${erro ? "text-alerta" : estado === "gravado" ? "text-verde" : "text-mostarda"}`}>{texto}</span>
-      <button className="botao-principal" disabled={estado === "a_gravar"} onClick={async () => {
-          atualizarParametros(() => {});
-          await descarregar();
-        }}>
-        Gravar alterações
-      </button>
-    </div>
-  );
-}

@@ -19,9 +19,13 @@ export type TipoSetup =
 export interface Pessoa {
   id: "designer" | "operador";
   nome: string;
+  // "colaboradores": soma o custo dos colaboradores registados no departamento
+  //   da função (Design → designer, Produção → operador). É o normal.
   // "ordenado": ordenado base x meses x (1 + encargos) + subsídio + outros.
   // "custo_total": o valor mensal já é tudo o que a empresa paga.
-  modo: "ordenado" | "custo_total";
+  modo: "colaboradores" | "ordenado" | "custo_total";
+  // Preenchido pelo servidor a partir de Colaboradores e Remuneração; não se edita.
+  registo?: RegistoPessoas;
   valorMensal: number;
   meses: number;
   encargosPct: number; // TSU patronal + seguro
@@ -29,6 +33,13 @@ export interface Pessoa {
   outrosAnual: number;
   pctProducao: number; // fatia do tempo afecta à produção
   precoVendaHora: number;
+}
+
+export interface RegistoPessoas {
+  departamento: string;
+  custoAnual: number; // próximos 12 meses, ao salário atual
+  fte: number; // tempo inteiro equivalente
+  pessoas: { nome: string; custoAnual: number; fte: number }[];
 }
 
 export interface Horas {
