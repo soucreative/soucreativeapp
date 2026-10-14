@@ -1,10 +1,21 @@
 # DEVLOG — SOU Creative
-> Última atualização: 2026-10-14
+> Última atualização: 2026-10-14 (noite)
 > Pipeline de desenvolvimento — o que está feito, em curso e por fazer. As ideias da equipa vivem no quadro "Ideias e melhorias", acima.
 
 ---
 
 ## ✅ CONCLUÍDO
+
+### Pipeline, artigos do TOC e equipa *(2026-10-14)*
+- [x] Pipeline de produção: por iniciar, em produção, pronto, entregue; prazo prometido, responsável, notas e prioridade por trabalho
+- [x] Data prevista de cada trabalho pela carga de cada máquina e da equipa, em dias úteis; aviso quando passa o prazo prometido
+- [x] "Que prazo posso dar?" para um orçamento ainda não ganho; arquivo dos entregues com prazo cumprido ou atrasado
+- [x] Artigos sincronizados com o TOC Online (produtos e famílias): 561 artigos de 18 famílias de peças
+- [x] Custo de designer e operador a partir dos colaboradores registados em Design e Produção
+- [x] Segunda máquina de bordar (Melco Summit) e bordado em 1 ou 2 máquinas em paralelo
+- [x] Calculadora com painel fixo e técnicas que abrem e fecham
+- [x] Botão Gravar alterações com estado em todas as páginas da produção; aviso de gravação na tabela de colaboradores
+- [x] TOC ligado (servidor 30, regresso pelo Postman); login com Google; emails pelo Google Workspace da SOU
 
 ### Base da app — cópia da app de RH da Descomunal *(2026-10-14)*
 A SOU parte do código da app de RH da Descomunal, sem o histórico e com Supabase, GitHub e Vercel próprios.
@@ -38,11 +49,10 @@ Parte do `SOU_Calculadora_v27.xlsx` e corrige o que nele não batia certo.
 
 ## 🔵 EM CURSO
 
-### Ligar a app às contas da SOU
-- [ ] Projeto Supabase: correr `supabase/sou-schema.sql`, criar o primeiro utilizador e a ficha de colaborador ligada
-- [ ] GitHub: repositório próprio da SOU
-- [ ] Vercel: variáveis de ambiente e domínio
-- [ ] TOC Online: aplicação nova com as credenciais da conta da SOU
+### Por decidir
+- [ ] Classificar as 35 contas de despesa do TOC (proposta num Google Doc)
+- [ ] Template do documento de orçamento: que formato e como se usa
+- [ ] Valor de compra da Melco Summit
 
 ### Substituir as estimativas por valores reais
 - [ ] Preço de compra da tinta, do filme, do pó, do papel, da linha, da entretela e do vinil
