@@ -519,7 +519,16 @@ function Resumo({ o, r }: { o: Orcamento; r: ReturnType<typeof calcularOrcamento
           ))}
           <Linha nome="Operador" valor={horasMin(r.minutosOperador)} />
           <Linha nome="Designer" valor={horasMin(r.minutosDesigner)} />
+          {Object.keys(r.minutosMaquina).length > 0 && (
+            <>
+              <div className="my-2 border-t border-linha" />
+              <Linha nome="Prazo de máquina" valor={horasMin(r.prazoMaquinaMin)} forte />
+            </>
+          )}
         </dl>
+        {Object.keys(r.minutosMaquina).length > 1 && (
+          <p className="mt-2 text-xs text-cinza">As máquinas trabalham ao mesmo tempo: o prazo é o da mais carregada.</p>
+        )}
       </div>
 
       <Avisos lista={r.avisos} />

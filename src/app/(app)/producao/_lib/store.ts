@@ -59,18 +59,37 @@ export function useCarregado(): boolean {
   return true;
 }
 
+/** Estado das gravações: há alterações à espera, a gravar, ou tudo gravado. */
+export type EstadoGravacao = "gravado" | "pendente" | "a_gravar";
+let emCurso = 0;
+let ultimaGravacao: string | null = null;
+function estadoGravacao(): EstadoGravacao {
+  if (emCurso > 0) return "a_gravar";
+  return pendentes.size > 0 ? "pendente" : "gravado";
+}
+export function useEstadoGravacao(): { estado: EstadoGravacao; em: string | null } {
+  const estado = useSyncExternalStore(subscrever, estadoGravacao, () => "gravado" as EstadoGravacao);
+  const em = useSyncExternalStore(subscrever, () => ultimaGravacao, () => null);
+  return { estado, em };
+}
+
 export function useErroGravacao(): string | null {
   return useSyncExternalStore(subscrever, () => erro, () => null);
 }
 
 async function gravar(p: Promise<{ ok: boolean; erro?: string }>) {
+  emCurso++;
+  avisar();
   try {
     const r = await p;
     erro = r.ok ? null : (r.erro ?? "Erro ao gravar.");
+    if (r.ok) ultimaGravacao = new Date().toISOString();
   } catch (e) {
     erro = e instanceof Error ? e.message : "Sem ligação ao servidor.";
+  } finally {
+    emCurso--;
+    avisar();
   }
-  avisar();
 }
 
 export function novoId(): string {
@@ -233,6 +252,7 @@ function agendar(chave: string, tarefa: () => Promise<{ ok: boolean; erro?: stri
   const t = pendentes.get(chave);
   if (t) clearTimeout(t);
   tarefas.set(chave, tarefa);
+  avisar();
   pendentes.set(
     chave,
     setTimeout(() => {

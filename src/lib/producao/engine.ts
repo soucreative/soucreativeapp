@@ -119,6 +119,29 @@ export function paramTecnica(params: Parametros, t: Tecnica): ParamTecnica {
   return p;
 }
 
+// ── Máquinas em paralelo ─────────────────────────────────────────────────
+
+/** Máquinas que fazem a técnica, pela ordem em que entram ao trabalho. */
+export function maquinasDaTecnica(params: Parametros, t: Tecnica): string[] {
+  const pt = paramTecnica(params, t);
+  const ids = pt.maquinasIds?.length ? pt.maquinasIds : [pt.maquinaId];
+  return ids.filter((id) => params.maquinas.some((m) => m.id === id));
+}
+
+/**
+ * Quantas máquinas trabalham este bordado ao mesmo tempo. Escolhido à mão na
+ * aplicação, ou automático: todas as disponíveis a partir de k.paraleloAPartirDe
+ * peças. Fora do bordado é sempre uma.
+ */
+export function maquinasEmParalelo(params: Parametros, a: Aplicacao, quantidade: number): number {
+  const disponiveis = maquinasDaTecnica(params, a.tecnica).length || 1;
+  if (a.tecnica !== "bordado") return 1;
+  const pedido = a.maquinasParalelo;
+  if (pedido && pedido > 0) return Math.min(pedido, disponiveis);
+  const limiar = paramTecnica(params, "bordado").k.paraleloAPartirDe ?? Infinity;
+  return quantidade >= limiar ? disponiveis : 1;
+}
+
 // ── Uma aplicação, numa peça ──────────────────────────────────────────────
 
 export interface ResultadoPeca {
@@ -130,7 +153,7 @@ export interface ResultadoPeca {
   avisos: string[];
 }
 
-export function calcularPeca(params: Parametros, a: Aplicacao): ResultadoPeca {
+export function calcularPeca(params: Parametros, a: Aplicacao, emParalelo = 1): ResultadoPeca {
   const pt = paramTecnica(params, a.tecnica);
   const k = pt.k;
   const l = a.larguraCm ?? 0;
@@ -191,7 +214,9 @@ export function calcularPeca(params: Parametros, a: Aplicacao): ResultadoPeca {
       const cores = Math.max(1, a.cores ?? 1);
       if (cores > 16) avisos.push("Mais de 16 cores: a Melco tem 16 agulhas, há troca manual de linhas.");
       maquinaMin = pontos / k.pontosMinuto + (cores - 1) * k.trocaCorMin;
-      operadorMin += maquinaMin * k.atencaoOperadorPct;
+      // Com duas máquinas, o operador embastida numa enquanto a outra borda:
+      // a vigilância reparte-se, o manuseamento de cada peça não.
+      operadorMin += (maquinaMin * k.atencaoOperadorPct) / Math.max(1, emParalelo);
       consumos.bord_linha = (pontos / 1000) * k.linhaMPor1000;
       const areaEntretela = area > 0 ? area : pontos / k.pontosPorCm2;
       consumos.bord_entretela = areaEntretela * k.entretelaFator;
@@ -231,6 +256,8 @@ export interface ResultadoAplicacao {
   aplicacao: Aplicacao;
   peca: ResultadoPeca;
   maquinaId: string;
+  // Máquinas usadas em paralelo; os minutos de máquina repartem-se por elas
+  maquinasIds: string[];
   // por peça
   custoConsumiveis: number;
   custoMaquina: number;
@@ -255,8 +282,12 @@ export function calcularAplicacao(
   const pt = paramTecnica(params, a.tecnica);
   const tc = tipoClienteDe(params, tipoCliente);
   const esc = escalaoDe(params, quantidade);
-  const maquina = params.maquinas.find((m) => m.id === pt.maquinaId);
-  const peca = calcularPeca(params, a);
+  const n = maquinasEmParalelo(params, a, quantidade);
+  const maquinasIds = (maquinasDaTecnica(params, a.tecnica).length ? maquinasDaTecnica(params, a.tecnica) : [pt.maquinaId]).slice(0, n);
+  // Custo/hora médio das máquinas usadas: cada peça ocupa uma delas
+  const custoHoraMaq =
+    maquinasIds.reduce((s, id) => s + custoHoraMaquina(params.maquinas.find((m) => m.id === id)), 0) / maquinasIds.length;
+  const peca = calcularPeca(params, a, n);
 
   const cOp = custoHoraPessoa(params, "operador");
   const cDes = custoHoraPessoa(params, "designer");
@@ -264,7 +295,7 @@ export function calcularAplicacao(
   const pvDes = precoHora(params, "designer") * tc.fatorHora;
 
   const custoConsumiveis = custoConsumos(params, peca.consumos);
-  const custoMaquina = (peca.maquinaMin / 60) * custoHoraMaquina(maquina);
+  const custoMaquina = (peca.maquinaMin / 60) * custoHoraMaq;
   const custoOperador = (peca.operadorMin / 60) * cOp;
 
   // Consumível e máquina levam a margem de personalização; a mão de obra
@@ -278,12 +309,14 @@ export function calcularAplicacao(
   const pct = params.setups[tipoSetup];
   const digitalizacao = a.tecnica === "bordado" ? params.complexidadeBordado[a.complexidade ?? "medio"] : 0;
   const setupDesignerMin = (pt.setupDesignerMin + digitalizacao) * pct;
-  const setupOperadorMin = pt.setupOperadorMin * pct;
+  // Cada máquina a mais tem de ser preparada: cores, bastidor e prova
+  const setupOperadorMin = pt.setupOperadorMin * pct * n;
 
   return {
     aplicacao: a,
     peca,
     maquinaId: pt.maquinaId,
+    maquinasIds,
     custoConsumiveis,
     custoMaquina,
     custoOperador,
@@ -388,6 +421,8 @@ export interface ResultadoOrcamento {
   custo: number;
   margem: number;
   minutosMaquina: Record<string, number>;
+  // Tempo até a máquina mais carregada acabar: as máquinas trabalham em paralelo
+  prazoMaquinaMin: number;
   minutosOperador: number;
   minutosDesigner: number;
   consumos: Record<string, number>;
@@ -421,13 +456,14 @@ export function calcularOrcamento(params: Parametros, o: Orcamento): ResultadoOr
 
   for (const l of linhas) {
     for (const r of l.aplicacoes) {
-      minutosMaquina[r.maquinaId] = (minutosMaquina[r.maquinaId] ?? 0) + r.peca.maquinaMin * l.qtdFaturada;
+      for (const id of r.maquinasIds) {
+        minutosMaquina[id] = (minutosMaquina[id] ?? 0) + (r.peca.maquinaMin * l.qtdFaturada) / r.maquinasIds.length;
+      }
       minutosOperador += r.peca.operadorMin * l.qtdFaturada + r.setupOperadorMin;
       minutosDesigner += r.setupDesignerMin;
       for (const [id, q] of Object.entries(r.peca.consumos)) consumos[id] = (consumos[id] ?? 0) + q * l.qtdFaturada;
       if (paramTecnica(params, r.aplicacao.tecnica).estimativa) usaEstimativas = true;
-      const maq = params.maquinas.find((m) => m.id === r.maquinaId);
-      if (maq?.estimativa) usaEstimativas = true;
+      if (r.maquinasIds.some((id) => params.maquinas.find((m) => m.id === id)?.estimativa)) usaEstimativas = true;
     }
   }
   for (const id of Object.keys(consumos)) {
@@ -456,6 +492,7 @@ export function calcularOrcamento(params: Parametros, o: Orcamento): ResultadoOr
     custo,
     margem: total > 0 ? (total - custo) / total : 0,
     minutosMaquina,
+    prazoMaquinaMin: Math.max(0, ...Object.values(minutosMaquina)),
     minutosOperador,
     minutosDesigner,
     consumos,

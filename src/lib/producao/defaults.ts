@@ -87,6 +87,18 @@ export const PARAMETROS_INICIAIS: Parametros = {
       nota: "Valor real. Vida útil, manutenção, horas de uso e energia por confirmar.",
     },
     {
+      id: "summit",
+      nome: "Melco Summit 1 cabeça, 16 agulhas",
+      valor: 16000,
+      vidaAnos: 5,
+      manutencaoAnual: 500,
+      horasUsoAno: 600,
+      energiaHora: 0.03,
+      cabecas: 1,
+      estimativa: true,
+      nota: "Valor de compra por confirmar: 16 000 € é estimativa.",
+    },
+    {
       id: "sawgrass",
       nome: "Sawgrass A3 + prensas",
       valor: 2000,
@@ -185,6 +197,7 @@ export const PARAMETROS_INICIAIS: Parametros = {
     {
       tecnica: "bordado",
       maquinaId: "melco",
+      maquinasIds: ["melco", "summit"],
       setupDesignerMin: 0, // a digitalização vem da complexidade
       setupOperadorMin: 20,
       manuseamentoMin: 2,
@@ -198,6 +211,7 @@ export const PARAMETROS_INICIAIS: Parametros = {
         entretelaFator: 1.5,
         pontosPorCm2: 180, // para estimar quando ainda não há ficheiro
         atencaoOperadorPct: 0.5, // fatia do tempo de máquina em que o operador está preso
+        paraleloAPartirDe: 10, // a partir de quantas peças o automático usa as duas máquinas
       },
       estimativa: true,
     },
@@ -280,3 +294,26 @@ export const ARTIGOS_INICIAIS: Artigo[] = [
   { id: "a-caneca", nome: "Caneca cerâmica AAA+ 325ml sublimação", categoria: "Caneca", fornecedor: "Stock interno", custo: 1.26, minimo: 1, portes: 0 },
   { id: "a-caneca-madeira", nome: "Caneca cerâmica com asa de madeira 325ml", categoria: "Caneca", fornecedor: "Stock interno", custo: 2.33, minimo: 1, portes: 0 },
 ];
+
+/**
+ * Junta os parâmetros gravados aos de partida. O que foi gravado ganha sempre;
+ * do lado dos de partida só entra o que ainda não existia (uma máquina nova,
+ * um coeficiente novo de uma técnica), para as alterações feitas à mão nunca
+ * se perderem quando a app ganha um parâmetro.
+ */
+export function completarParametros(guardado: Partial<Parametros>): Parametros {
+  const base = structuredClone(PARAMETROS_INICIAIS);
+  const juntarPorId = <T extends { id: string }>(g: T[] | undefined, b: T[]) =>
+    g ? [...g, ...b.filter((x) => !g.some((y) => y.id === x.id))] : b;
+  return {
+    ...base,
+    ...guardado,
+    empresa: { ...base.empresa, ...guardado.empresa },
+    maquinas: juntarPorId(guardado.maquinas, base.maquinas),
+    consumiveis: juntarPorId(guardado.consumiveis, base.consumiveis),
+    tecnicas: base.tecnicas.map((b) => {
+      const g = guardado.tecnicas?.find((t) => t.tecnica === b.tecnica);
+      return g ? { ...b, ...g, maquinasIds: g.maquinasIds ?? b.maquinasIds, k: { ...b.k, ...g.k } } : b;
+    }),
+  };
+}

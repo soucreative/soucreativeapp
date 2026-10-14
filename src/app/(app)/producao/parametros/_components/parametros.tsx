@@ -15,7 +15,15 @@ import {
   tipoClienteDe,
 } from "@/lib/producao/engine";
 import { euros, eurosFino, numero, percent } from "@/lib/producao/format";
-import { atualizarParametros, novoId, reporParametros, useDados } from "@/app/(app)/producao/_lib/store";
+import {
+  atualizarParametros,
+  descarregar,
+  novoId,
+  reporParametros,
+  useDados,
+  useErroGravacao,
+  useEstadoGravacao,
+} from "@/app/(app)/producao/_lib/store";
 import type { TipoSetup } from "@/lib/producao/types";
 
 const NOMES_K: Record<string, string> = {
@@ -41,6 +49,7 @@ const NOMES_K: Record<string, string> = {
   entretelaFator: "Entretela ÷ área do desenho",
   pontosPorCm2: "Pontos por cm² (para estimar)",
   atencaoOperadorPct: "Operador preso à máquina (0 a 1)",
+  paraleloAPartirDe: "2 máquinas a partir de (peças)",
   vinilFator: "Vinil gasto ÷ área do desenho",
   corteMinPor100cm2: "Corte (min por 100 cm²)",
   descasqueMinSimples: "Descasque simples (min/100 cm²)",
@@ -60,12 +69,15 @@ export default function EditorParametros() {
       <Titulo
         sub="Tudo o que muda o preço vive aqui. Os campos a amarelo são estimativas de partida, a substituir pelos valores reais."
         acoes={
+          <>
+          <EstadoGravacao />
           <button
             className="botao-perigo"
             onClick={() => confirm("Repor todos os parâmetros nos valores de partida? Perde as alterações feitas.") && void reporParametros()}
           >
             Repor valores de partida
           </button>
+          </>
         }
       >
         Parâmetros
@@ -485,5 +497,31 @@ function Seccao({ titulo, children }: { titulo: string; children: ReactNode }) {
       <h2 className="titulo mb-4 text-lg text-verde">{titulo}</h2>
       {children}
     </section>
+  );
+}
+
+function EstadoGravacao() {
+  const { estado, em } = useEstadoGravacao();
+  const erro = useErroGravacao();
+  const hora = em ? new Date(em).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" }) : null;
+  const texto = erro
+    ? "Erro ao gravar"
+    : estado === "a_gravar"
+      ? "A gravar…"
+      : estado === "pendente"
+        ? "Alterações por gravar"
+        : hora
+          ? `Gravado às ${hora}`
+          : "Tudo gravado";
+  return (
+    <div className="flex items-center gap-2">
+      <span className={`text-xs ${erro ? "text-alerta" : estado === "gravado" ? "text-verde" : "text-mostarda"}`}>{texto}</span>
+      <button className="botao-principal" disabled={estado === "a_gravar"} onClick={async () => {
+          atualizarParametros(() => {});
+          await descarregar();
+        }}>
+        Gravar alterações
+      </button>
+    </div>
   );
 }

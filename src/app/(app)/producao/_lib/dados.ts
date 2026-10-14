@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import { ARTIGOS_INICIAIS, PARAMETROS_INICIAIS } from '@/lib/producao/defaults'
+import { ARTIGOS_INICIAIS, completarParametros } from '@/lib/producao/defaults'
 import type { Artigo, Cliente, Orcamento, Parametros } from '@/lib/producao/types'
 
 export interface DadosProducao {
@@ -36,7 +36,7 @@ export function clienteDeLinha(r: LinhaCliente): Cliente {
 export async function carregarParametros(): Promise<Parametros> {
   const { data } = await createAdminClient().from('prod_parametros').select('dados').eq('id', 1).maybeSingle()
   const guardado = (data?.dados ?? {}) as Partial<Parametros>
-  return { ...structuredClone(PARAMETROS_INICIAIS), ...guardado }
+  return completarParametros(guardado)
 }
 
 export async function carregarDadosProducao(): Promise<DadosProducao> {

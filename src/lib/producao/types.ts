@@ -56,6 +56,7 @@ export interface Maquina {
   manutencaoAnual: number;
   horasUsoAno: number;
   energiaHora: number;
+  cabecas?: number;
   estimativa: boolean;
   nota?: string;
 }
@@ -75,6 +76,9 @@ export interface Consumivel {
 export interface ParamTecnica {
   tecnica: Tecnica;
   maquinaId: string;
+  // Máquinas que fazem esta técnica e podem trabalhar em paralelo no mesmo
+  // projeto. A primeira é a principal; vazio = só maquinaId.
+  maquinasIds?: string[];
   // Setup completo: preparação de arte (designer) + preparação técnica (operador).
   setupDesignerMin: number;
   setupOperadorMin: number;
@@ -170,6 +174,8 @@ export interface Aplicacao {
   pontos?: number;
   cores?: number;
   complexidade?: "simples" | "medio" | "complexo";
+  // Quantas máquinas bordam este trabalho ao mesmo tempo. Vazio = automático.
+  maquinasParalelo?: number;
   // Setup: as três perguntas
   jaProduzido: boolean;
   arteCliente: boolean;

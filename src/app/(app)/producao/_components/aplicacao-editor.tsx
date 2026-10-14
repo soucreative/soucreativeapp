@@ -100,6 +100,17 @@ export function AplicacaoEditor({
                 <option value="complexo">Complexo</option>
               </select>
             </Rotulado>
+            <Rotulado rotulo="Máquinas">
+              <select
+                className="campo"
+                value={a.maquinasParalelo ?? 0}
+                onChange={(e) => set({ maquinasParalelo: Number(e.target.value) || undefined })}
+              >
+                <option value={0}>Automático</option>
+                <option value={1}>1 máquina</option>
+                <option value={2}>2 em paralelo</option>
+              </select>
+            </Rotulado>
           </>
         ) : (
           <Rotulado rotulo="Cobertura de tinta">
@@ -170,7 +181,11 @@ export function AplicacaoEditor({
           <span>
             Setup <b className="text-tinta">{euros(r.vendaSetup)}</b> · {NOME_SETUP[r.tipoSetup]}
           </span>
-          {a.tecnica === "bordado" && <span>{numero(r.peca.pontos)} pontos</span>}
+          {a.tecnica === "bordado" && (
+            <span>
+              {numero(r.peca.pontos)} pontos · {r.maquinasIds.length === 1 ? "1 máquina" : `${r.maquinasIds.length} máquinas em paralelo`}
+            </span>
+          )}
           <span>Máquina {horasMin(r.peca.maquinaMin)}/peça</span>
           <span>Operador {horasMin(r.peca.operadorMin)}/peça</span>
           <span>
