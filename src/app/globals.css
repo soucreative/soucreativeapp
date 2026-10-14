@@ -1,0 +1,104 @@
+@import "tailwindcss";
+
+/* Marca SOU creative '26. A app de origem usa "indigo" como cor de destaque
+   em todo o lado; redefinir a escala aqui põe o verde SOU em todos os ecrãs
+   sem tocar em cada componente. */
+@theme {
+  --color-indigo-50:  #f3f5ee;
+  --color-indigo-100: #e6e9dc;
+  --color-indigo-200: #cdd4b9;
+  --color-indigo-300: #b0bb92;
+  --color-indigo-400: #8e9c66;
+  --color-indigo-500: #6c7a45;
+  --color-indigo-600: #4e5b31;
+  --color-indigo-700: #414c29;
+  --color-indigo-800: #353e22;
+  --color-indigo-900: #2a311b;
+  --color-indigo-950: #181c0f;
+
+  --color-verde: #4e5b31;
+  --color-verde-escuro: #3a4424;
+  --color-verde-claro: #e6e9dc;
+  --color-beige: #efdbb2;
+  --color-beige-claro: #f7efdc;
+  --color-mostarda: #b47e00;
+  --color-papel: #fbf8f1;
+  --color-tinta: #1d1d1b;
+  --color-cinza: #6b6a63;
+  --color-linha: #e3ddcf;
+  --color-alerta: #a3341f;
+}
+
+@theme inline {
+  --font-sans: var(--font-lexend);
+  --font-titulo: var(--font-spalla);
+}
+
+body {
+  color: #1d1d1b;
+}
+
+.titulo {
+  font-family: var(--font-spalla);
+  letter-spacing: 0.01em;
+}
+
+/* ── Impressão ────────────────────────────────────────────────────────────────
+   A página de relatório é a origem do PDF: o browser guarda-a em ficheiro. A
+   barra lateral e a margem que lhe corresponde não fazem parte do documento. */
+@media print {
+  aside { display: none !important; }
+  main  { margin-left: 0 !important; }
+
+  body { background: #fff; }
+
+  @page { margin: 14mm; size: A4; }
+
+  /* Cabeçalhos de tabela repetem-se em cada página, e nenhuma linha é cortada. */
+  thead { display: table-header-group; }
+  tr    { break-inside: avoid; }
+}
+
+/* ── Componentes da Produção (calculadora) ────────────────────────────────── */
+@layer components {
+  .cartao {
+    @apply rounded-xl border border-linha bg-white p-5;
+  }
+  .rotulo {
+    @apply mb-1 block text-xs font-medium text-cinza;
+  }
+  .campo {
+    @apply w-full rounded-md border border-linha bg-white px-2.5 py-1.5 text-sm outline-none transition focus:border-verde focus:ring-2 focus:ring-verde/20 disabled:bg-papel;
+  }
+  .campo-estimativa {
+    @apply border-mostarda/50 bg-beige-claro;
+  }
+  .botao-principal {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition disabled:opacity-50 bg-verde text-white hover:bg-verde-escuro;
+  }
+  .botao-secundario {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition disabled:opacity-50 border border-linha bg-white text-tinta hover:border-verde hover:text-verde;
+  }
+  .botao-perigo {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition disabled:opacity-50 text-alerta hover:bg-alerta/10;
+  }
+  .etiqueta {
+    @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium;
+  }
+  .tabela {
+    @apply w-full text-sm;
+  }
+  .tabela th {
+    @apply border-b border-linha px-2 py-2 text-left text-xs font-medium text-cinza;
+  }
+  .tabela td {
+    @apply border-b border-linha/60 px-2 py-2 align-top;
+  }
+  .num {
+    @apply text-right tabular-nums;
+  }
+}
+
+@media print {
+  .nao-imprimir { display: none !important; }
+}
