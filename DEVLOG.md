@@ -6,6 +6,11 @@
 
 ## ✅ CONCLUÍDO
 
+### Folha de obra e custos por rubrica *(2026-10-16)*
+
+- Resumo do orçamento mostra de onde vem o custo (artigos, consumíveis, máquinas, operador, designer, portes) em € e % da venda, e a margem em €.
+- Nova Folha de obra (uso interno, imprimível): resumo económico, produção por artigo com os códigos do TOC por cor/tamanho, técnicas, máquinas e tempos, consumíveis previstos, linhas para faturação e lista de controlo (aceite, pagamento, maquete, encomenda, produção, entrega, fatura).
+
 ### Variantes de cor e tamanho, descontos e preços por quantidade *(2026-10-16)*
 
 - Artigos do TOC agrupados em modelos pelo código (Família-Modelo-Tamanho-Cor_Fornecedor; nos códigos de 8 dígitos, 5 de modelo + 3 de cor). 325 dos 574 artigos ficam em 57 modelos.

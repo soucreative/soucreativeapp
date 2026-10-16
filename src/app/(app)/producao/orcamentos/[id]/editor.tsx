@@ -8,7 +8,7 @@ import { EstadoGravacao } from "@/app/(app)/producao/_components/estado-gravacao
 import { SeletorArtigo } from "@/app/(app)/producao/_components/seletor-artigo";
 import { ImagemArtigo } from "@/app/(app)/producao/_components/imagem-artigo";
 import { Avisos, CampoNumero, EtiquetaEstimativa, Interruptor, Rotulado } from "@/app/(app)/producao/_components/campos";
-import { calcularOrcamento, precosPorQuantidade, type ResultadoLinha } from "@/lib/producao/engine";
+import { calcularOrcamento, custosPorRubrica, precosPorQuantidade, type ResultadoLinha } from "@/lib/producao/engine";
 import { ESTADOS, MOTIVOS_PERDA } from "@/lib/producao/estados";
 import { dataPt, euros, horasMin, numero, percent } from "@/lib/producao/format";
 import { etapaDe, ETAPAS } from "@/lib/producao/agenda";
@@ -111,6 +111,9 @@ function Editor({ o }: { o: Orcamento }) {
           {editavel && <EstadoGravacao forcar={() => atualizarOrcamento(o.id, (x) => x)} />}
           <Link className="botao-secundario" href={`/producao/orcamentos/${o.id}/documento`}>
             Documento / PDF
+          </Link>
+          <Link className="botao-secundario" href={`/producao/orcamentos/${o.id}/folha`} title="Custos, produção, faturação e controlo: uso interno">
+            Folha de obra
           </Link>
           <button
             className="botao-secundario"
@@ -810,8 +813,9 @@ function Resumo({ o, r }: { o: Orcamento; r: ReturnType<typeof calcularOrcamento
           <Linha nome="Total c/ IVA" valor={euros(r.totalComIva)} forte />
           <div className="my-2 border-t border-linha" />
           <Linha nome="Custo" valor={euros(r.custo)} />
-          <Linha nome="Margem" valor={percent(r.margem)} alerta={r.margem < 0} />
+          <Linha nome="Margem" valor={`${euros(r.total - r.custo)} · ${percent(r.margem)}`} alerta={r.margem < 0} />
         </dl>
+        <CustosResumo r={r} />
         {fixo && Math.abs(o.congelado!.total - r.total) > 0.01 && (
           <p className="mt-3 rounded bg-beige-claro p-2 text-xs text-mostarda">
             Com os parâmetros de hoje daria {euros(r.total)}. O preço enviado ao cliente foi {euros(o.congelado!.total)}.
@@ -846,6 +850,47 @@ function Resumo({ o, r }: { o: Orcamento; r: ReturnType<typeof calcularOrcamento
 
       <Avisos lista={r.avisos} />
     </>
+  );
+}
+
+/** De onde vem o custo: barras por rubrica, em € e em % da venda. */
+function CustosResumo({ r }: { r: ReturnType<typeof calcularOrcamento> }) {
+  const p = useDados().parametros;
+  const c = custosPorRubrica(p, r);
+  if (c.total <= 0) return null;
+  const rubricas: [string, number][] = [
+    ["Artigos", c.artigos],
+    ["Consumíveis", c.consumiveis],
+    ["Máquinas", c.maquinas],
+    ["Operador", c.operador],
+    ["Designer", c.designer],
+    ["Portes", c.portes],
+  ];
+  return (
+    <div className="mt-4 border-t border-linha pt-3">
+      <div className="mb-2 flex justify-between text-xs text-cinza">
+        <span className="rotulo">De onde vem o custo</span>
+        <span>% da venda</span>
+      </div>
+      <div className="space-y-1.5 text-xs">
+        {rubricas
+          .filter(([, v]) => v > 0.004)
+          .map(([nome, v]) => (
+            <div key={nome}>
+              <div className="flex justify-between gap-2">
+                <span>{nome}</span>
+                <span className="tabular-nums">
+                  {euros(v)} <span className="text-cinza">· {r.total > 0 ? percent(v / r.total) : "—"}</span>
+                </span>
+              </div>
+              <div className="mt-0.5 h-1.5 rounded bg-linha">
+                <div className="h-1.5 rounded bg-verde" style={{ width: `${Math.min(100, (v / c.total) * 100)}%` }} />
+              </div>
+            </div>
+          ))}
+      </div>
+      <p className="mt-2 text-[11px] text-cinza">Pessoas: {euros(c.operador + c.designer)}. O detalhe está na folha de obra.</p>
+    </div>
   );
 }
 

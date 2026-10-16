@@ -671,3 +671,41 @@ export function precosPorQuantidade(
       return { quantidade: l.qtdFaturada, precoUnit, total: precoUnit * l.qtdFaturada };
     });
 }
+
+// ── Custos por rubrica, para o resumo interno e a folha de obra ───────────
+
+export interface CustosRubrica {
+  artigos: number; // peças em branco
+  consumiveis: number;
+  maquinas: number; // amortização, manutenção e energia
+  operador: number; // produção e preparação das máquinas
+  designer: number; // preparação de artes, nomes e criação gráfica
+  portes: number;
+  total: number;
+  // Consumíveis gastos, por id: quantidade (já com desperdício) e custo
+  detalheConsumiveis: { id: string; nome: string; unidade: string; quantidade: number; custo: number }[];
+}
+
+/** Divide o custo das linhas que contam (r.linhas incluídas) pelas rubricas. Soma o mesmo que r.custo. */
+export function custosPorRubrica(params: Parametros, r: ResultadoOrcamento): CustosRubrica {
+  const cOp = custoHoraPessoa(params, "operador");
+  const cDes = custoHoraPessoa(params, "designer");
+  const c = { artigos: 0, consumiveis: 0, maquinas: 0, operador: 0, designer: r.custoCriacao, portes: 0 };
+  for (const l of r.linhas.filter((x) => x.incluida)) {
+    if (!l.linha.artigoDoCliente) c.artigos += l.linha.custoArtigo * l.qtdFaturada;
+    c.portes += l.portes;
+    for (const a of l.aplicacoes) {
+      c.consumiveis += a.custoConsumiveis * l.qtdFaturada;
+      c.maquinas += a.custoMaquina * l.qtdFaturada;
+      c.operador += a.custoOperador * l.qtdFaturada + (a.setupOperadorMin / 60) * cOp;
+      c.designer += a.custoDesigner * l.qtdFaturada + (a.setupDesignerMin / 60) * cDes;
+    }
+  }
+  const detalheConsumiveis = Object.entries(r.consumos)
+    .map(([id, quantidade]) => {
+      const k = params.consumiveis.find((x) => x.id === id);
+      return { id, nome: k?.nome ?? id, unidade: k?.unidade ?? "", quantidade, custo: quantidade * (k?.preco ?? 0) };
+    })
+    .sort((a, b) => b.custo - a.custo);
+  return { ...c, total: c.artigos + c.consumiveis + c.maquinas + c.operador + c.designer + c.portes, detalheConsumiveis };
+}
