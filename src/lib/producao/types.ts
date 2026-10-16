@@ -5,7 +5,8 @@ export type Tecnica = "bordado" | "dtg" | "dtf" | "sublimacao" | "cricut";
 
 export type TipoCliente = "particular" | "empresa" | "parceiro";
 
-export type EstadoOrcamento = "rascunho" | "enviado" | "ganho" | "perdido";
+// Cancelado: em vez de apagar, para a numeração não ter buracos
+export type EstadoOrcamento = "rascunho" | "enviado" | "ganho" | "perdido" | "cancelado";
 
 // Depois de ganho, o trabalho passa pela produção até ser entregue
 export type EtapaProducao = "por_iniciar" | "em_producao" | "pronto" | "entregue";
@@ -272,6 +273,10 @@ export interface Orcamento {
   data: string;
   estado: EstadoOrcamento;
   motivoPerda?: string;
+  // Cancelamento: porquê, quando e em que estado estava (para o poder reativar)
+  motivoCancelamento?: string;
+  canceladoEm?: string;
+  estadoAntesCancelar?: EstadoOrcamento;
   horasCriacao: number;
   descontoPotencialPct: number;
   descontoMotivo?: string;

@@ -454,7 +454,7 @@ CREATE TABLE prod_orcamentos (
   id          UUID PRIMARY KEY,
   numero      TEXT NOT NULL UNIQUE,
   cliente_id  UUID REFERENCES prod_clientes(id) ON DELETE SET NULL,
-  estado      TEXT NOT NULL DEFAULT 'rascunho' CHECK (estado IN ('rascunho', 'enviado', 'ganho', 'perdido')),
+  estado      TEXT NOT NULL DEFAULT 'rascunho' CHECK (estado IN ('rascunho', 'enviado', 'ganho', 'perdido', 'cancelado')),
   data        DATE NOT NULL,
   conteudo    JSONB NOT NULL,
   total       NUMERIC(12,2) NOT NULL DEFAULT 0,

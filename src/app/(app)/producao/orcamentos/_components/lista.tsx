@@ -67,7 +67,7 @@ export default function ListaOrcamentos() {
       </div>
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        {(["todos", "rascunho", "enviado", "ganho", "perdido"] as const).map((e) => (
+        {(["todos", "rascunho", "enviado", "ganho", "perdido", "cancelado"] as const).map((e) => (
           <button
             key={e}
             onClick={() => setFiltro(e)}
@@ -99,13 +99,24 @@ export default function ListaOrcamentos() {
           </thead>
           <tbody>
             {visiveis.map(({ o, cliente, total, margem }) => (
-              <tr key={o.id} className="cursor-pointer hover:bg-papel" onClick={() => router.push(`/producao/orcamentos/${o.id}`)}>
-                <td className="font-medium text-verde">
+              <tr
+                key={o.id}
+                className={`cursor-pointer hover:bg-papel ${o.estado === "cancelado" ? "text-cinza line-through decoration-cinza/60" : ""}`}
+                onClick={() => router.push(`/producao/orcamentos/${o.id}`)}
+              >
+                <td className={`font-medium ${o.estado === "cancelado" ? "" : "text-verde"}`}>
                   <Link href={`/producao/orcamentos/${o.id}`}>{o.numero}</Link>
                 </td>
                 <td>{dataPt(o.data)}</td>
                 <td>{cliente?.nome ?? <span className="text-cinza">sem cliente</span>}</td>
-                <td>{o.titulo || <span className="text-cinza">—</span>}</td>
+                <td>
+                  {o.titulo || <span className="text-cinza">—</span>}
+                  {o.estado === "cancelado" && o.motivoCancelamento && (
+                    <div className="text-xs text-cinza no-underline" style={{ textDecoration: "none" }}>
+                      Cancelado: {o.motivoCancelamento}
+                    </div>
+                  )}
+                </td>
                 <td>
                   <span className={`etiqueta ${ESTADOS[o.estado].classe}`}>{ESTADOS[o.estado].nome}</span>
                   {o.produzidoEm && <span className="etiqueta ml-1 bg-verde-claro text-verde">produzido</span>}

@@ -13,7 +13,6 @@ import { ESTADOS, MOTIVOS_PERDA } from "@/lib/producao/estados";
 import { dataPt, euros, horasMin, numero, percent } from "@/lib/producao/format";
 import { etapaDe, ETAPAS } from "@/lib/producao/agenda";
 import {
-  apagarOrcamento,
   duplicarOrcamento,
   guardarCliente,
   atualizarOrcamento,
@@ -70,6 +69,10 @@ function Editor({ o }: { o: Orcamento }) {
       const r2 = calcularOrcamento(p, { ...o, ...extra, estado: "ganho", congelado });
       congelado = { ...congelado, total: r2.total, totalComIva: r2.totalComIva, margem: r2.margem };
     }
+    if (o.estado === "ganho" && estado === "enviado" && congelado) {
+      const r2 = calcularOrcamento(p, { ...o, ...extra, estado: "enviado", opcaoEscolhida: undefined, congelado });
+      congelado = { ...congelado, total: r2.total, totalComIva: r2.totalComIva, margem: r2.margem };
+    }
     // Ao ganhar, o trabalho entra no pipeline por iniciar, no fim da fila
     const producao = estado === "ganho" && !o.producao ? { etapa: "por_iniciar" as const, ordem: Date.now() } : o.producao;
     set({ estado, congelado, producao, ...extra });
@@ -124,17 +127,23 @@ function Editor({ o }: { o: Orcamento }) {
           >
             Duplicar
           </button>
-          <button
-            className="botao-perigo"
-            onClick={() => {
-              if (confirm(`Apagar o orçamento ${o.numero}? Não há forma de o recuperar.`)) {
-                apagarOrcamento(o.id);
-                router.push("/producao/orcamentos");
-              }
-            }}
-          >
-            Apagar
-          </button>
+          {o.estado !== "cancelado" && (
+            <button
+              className="botao-perigo"
+              title="O orçamento fica na lista, riscado, e o número não se perde"
+              onClick={() => {
+                const motivo = prompt(`Cancelar o orçamento ${o.numero}. Porquê? (fica registado)`)?.trim();
+                if (!motivo) return;
+                mudarEstado("cancelado", {
+                  motivoCancelamento: motivo,
+                  canceladoEm: new Date().toISOString(),
+                  estadoAntesCancelar: o.estado,
+                });
+              }}
+            >
+              Cancelar orçamento
+            </button>
+          )}
         </div>
       </div>
 
@@ -340,6 +349,39 @@ function BarraEstado({
           <Link className="botao-principal" href="/producao/pipeline">
             Ver no pipeline
           </Link>
+          <button
+            className="botao-secundario ml-auto"
+            title="Marcado como ganho por engano: volta a enviado e sai do pipeline"
+            onClick={() => {
+              const aviso = o.produzidoEm
+                ? "\n\nAtenção: já foi marcado como produzido e o consumo já saiu do stock. O stock não é reposto."
+                : "";
+              if (confirm(`Anular o ganho de ${o.numero}? Volta a enviado, perde a opção escolhida e sai do pipeline.${aviso}`)) {
+                mudarEstado("enviado", { opcaoEscolhida: undefined, producao: undefined });
+              }
+            }}
+          >
+            Anular ganho
+          </button>
+        </>
+      )}
+      {o.estado === "cancelado" && (
+        <>
+          <span className="text-cinza">
+            Cancelado{o.canceladoEm ? ` a ${dataPt(o.canceladoEm)}` : ""}: <b className="text-tinta">{o.motivoCancelamento || "sem motivo"}</b>
+          </span>
+          <button
+            className="botao-secundario ml-auto"
+            onClick={() =>
+              mudarEstado(o.estadoAntesCancelar && o.estadoAntesCancelar !== "cancelado" ? o.estadoAntesCancelar : "rascunho", {
+                motivoCancelamento: undefined,
+                canceladoEm: undefined,
+                estadoAntesCancelar: undefined,
+              })
+            }
+          >
+            Reativar
+          </button>
         </>
       )}
       {o.estado === "perdido" && (

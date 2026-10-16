@@ -5,6 +5,7 @@ export const ESTADOS: Record<EstadoOrcamento, { nome: string; classe: string }> 
   enviado: { nome: "Enviado", classe: "bg-beige text-tinta" },
   ganho: { nome: "Ganho", classe: "bg-verde text-white" },
   perdido: { nome: "Perdido", classe: "bg-alerta/15 text-alerta" },
+  cancelado: { nome: "Cancelado", classe: "bg-linha text-cinza line-through" },
 };
 
 export const MOTIVOS_PERDA = [
