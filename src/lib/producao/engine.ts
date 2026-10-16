@@ -686,6 +686,15 @@ export function precosPorQuantidade(
     });
 }
 
+/**
+ * PVP sugerido para um parceiro que revende: o preço que paga à SOU (sem IVA)
+ * com a margem de revenda dos parâmetros, mais IVA, arredondado a 0,10 € acima.
+ */
+export function pvpSugerido(params: Parametros, precoParceiro: number): number {
+  const m = Math.min(0.95, Math.max(0, params.margemRevenda ?? 0.5));
+  return precoParceiro > 0 ? Math.ceil((precoParceiro / (1 - m)) * (1 + params.iva) * 10) / 10 : 0;
+}
+
 // ── Custos por rubrica, para o resumo interno e a folha de obra ───────────
 
 export interface CustosRubrica {

@@ -283,6 +283,7 @@ export const PARAMETROS_INICIAIS: Parametros = {
   valorMinimoEncomenda: 0,
   margemSegura: 0.3,
   descontoMaximo: 0.05,
+  margemRevenda: 0.5,
   capacidade: { horasDiaMaquina: 7, horasDiaPessoa: 7 },
   // Preparar e verificar cada nome; posicionar e trocar o ficheiro na máquina
   nomes: { designerMin: 1, operadorMin: 0.5 },

@@ -118,7 +118,7 @@ export default function Documento() {
             </thead>
             <tbody>
               {linhasTabela.map((l) => (
-                <LinhaDoc key={l.linha.id} l={l} precoUnit={precoUnit(l)} precoTabela={precoTabela(l)} total={totalLinha(l)} imagem={imagemDe(l)} alternativas={alternativasDe(l)} reparticao={reparticaoDe(l)} />
+                <LinhaDoc key={l.linha.id} l={l} precoUnit={precoUnit(l)} precoTabela={precoTabela(l)} total={totalLinha(l)} imagem={imagemDe(l)} alternativas={alternativasDe(l)} reparticao={reparticaoDe(l)} pvp={o.tipoCliente === "parceiro" ? l.linha.pvpRecomendado : undefined} />
               ))}
               {r.vendaCriacao > 0 && (
                 <tr className="border-b border-linha">
@@ -162,6 +162,7 @@ export default function Documento() {
                         imagem={imagemDe(l)}
                         alternativas={alternativasDe(l)}
                         reparticao={reparticaoDe(l)}
+                        pvp={o.tipoCliente === "parceiro" ? l.linha.pvpRecomendado : undefined}
                       />
                     );
                   })}
@@ -277,6 +278,7 @@ function LinhaDoc({
   imagem,
   alternativas,
   reparticao,
+  pvp,
 }: {
   l: ResultadoLinha;
   rotulo?: string;
@@ -287,6 +289,7 @@ function LinhaDoc({
   imagem?: string;
   alternativas?: { quantidade: number; precoUnit: number; total: number }[];
   reparticao?: string;
+  pvp?: number;
 }) {
   return (
     <tr className="break-inside-avoid border-b border-linha">
@@ -300,6 +303,9 @@ function LinhaDoc({
         {rotulo && <div className="text-xs font-medium uppercase tracking-wider text-mostarda">{rotulo}</div>}
         <div className="font-medium">{l.linha.descricao || "Artigo"}</div>
         {reparticao && <div className="text-xs text-cinza">{reparticao}</div>}
+        {pvp != null && pvp > 0 && (
+          <div className="text-xs font-medium text-mostarda">PVP recomendado: {euros(pvp)} (c/ IVA)</div>
+        )}
         {l.linha.artigoDoCliente && <div className="text-xs text-cinza">Peça fornecida pelo cliente</div>}
         {precoTabela != null && (
           <div className="text-xs font-medium text-verde">Desconto de {percent(1 - precoUnit / precoTabela)} sobre o preço de tabela</div>

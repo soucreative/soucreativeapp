@@ -167,6 +167,8 @@ export interface Parametros {
   margemSegura?: number;
   // Desconto máximo do preço praticado sobre o sugerido (para cima não há limite)
   descontoMaximo?: number;
+  // Margem do parceiro sobre o PVP sem IVA, para sugerir o PVP recomendado (0,5 = 50%)
+  margemRevenda?: number;
   // Correções ao agrupamento automático de variantes, por id de artigo
   ajustesVariantes?: Record<string, AjusteVariante>;
   // Famílias de produtos do TOC que entram no catálogo de artigos (nomes)
@@ -254,6 +256,8 @@ export interface LinhaOrcamento {
   // Em alternativa ao preço à mão: desconto sobre o sugerido (0,05 = 5%).
   // Fica em percentagem, para acompanhar o sugerido se a quantidade mudar.
   descontoPct?: number;
+  // Parceiros recorrentes (revendem): preço de venda ao público recomendado, com IVA
+  pvpRecomendado?: number;
   // Linhas com o mesmo lote são o mesmo trabalho em variantes (cores, tamanhos):
   // somam as quantidades para o escalão e pagam o setup uma vez.
   lote?: string;

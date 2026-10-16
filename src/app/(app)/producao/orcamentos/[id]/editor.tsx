@@ -8,7 +8,7 @@ import { EstadoGravacao } from "@/app/(app)/producao/_components/estado-gravacao
 import { SeletorArtigo } from "@/app/(app)/producao/_components/seletor-artigo";
 import { ImagemArtigo } from "@/app/(app)/producao/_components/imagem-artigo";
 import { Avisos, CampoNumero, EtiquetaEstimativa, Interruptor, Rotulado } from "@/app/(app)/producao/_components/campos";
-import { calcularOrcamento, custosPorRubrica, precosPorQuantidade, type ResultadoLinha } from "@/lib/producao/engine";
+import { calcularOrcamento, custosPorRubrica, precosPorQuantidade, pvpSugerido, type ResultadoLinha } from "@/lib/producao/engine";
 import { ESTADOS, MOTIVOS_PERDA } from "@/lib/producao/estados";
 import { dataPt, euros, horasMin, numero, percent } from "@/lib/producao/format";
 import { etapaDe, ETAPAS } from "@/lib/producao/agenda";
@@ -626,6 +626,16 @@ function EditorLinha({
             </Rotulado>
           </div>
         )}
+        {orcamento?.tipoCliente === "parceiro" && (
+          <PvpRecomendado
+            valor={l.pvpRecomendado}
+            sugerido={pvpSugerido(dadosLinha.parametros, r?.precoUnit ?? 0)}
+            margemRevenda={dadosLinha.parametros.margemRevenda ?? 0.5}
+            precoParceiro={r?.precoUnit}
+            iva={dadosLinha.parametros.iva}
+            aoMudar={(n) => set({ pvpRecomendado: n })}
+          />
+        )}
         <Rotulado rotulo="Mostrar também para" ajuda="Outras quantidades, separadas por vírgula (ex.: 50, 100)">
           <QuantidadesAlternativas valor={l.quantidadesAlternativas} aoMudar={(q) => set({ quantidadesAlternativas: q })} />
         </Rotulado>
@@ -784,6 +794,51 @@ function GrelhaVariantes({
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
+
+/**
+ * PVP recomendado ao parceiro, com IVA. Sugere o preço que a SOU faria a um
+ * particular e mostra a margem que fica ao parceiro na revenda.
+ */
+function PvpRecomendado({
+  valor,
+  sugerido,
+  precoParceiro,
+  iva,
+  margemRevenda,
+  aoMudar,
+}: {
+  valor?: number;
+  sugerido: number;
+  margemRevenda: number;
+  precoParceiro?: number;
+  iva: number;
+  aoMudar: (n: number | undefined) => void;
+}) {
+  const pvp = valor ?? 0;
+  const semIva = pvp / (1 + iva);
+  const margem = pvp > 0 && precoParceiro != null ? (semIva - precoParceiro) / semIva : null;
+  return (
+    <div className="lg:col-span-2">
+      <Rotulado
+        rotulo="PVP recomendado (c/ IVA)"
+        ajuda={
+          margem != null
+            ? `O parceiro fica com ${percent(margem)} na revenda (${euros(semIva - (precoParceiro ?? 0))}/un s/ IVA)`
+            : `Sai no orçamento. Sugerido: ${euros(sugerido)}, com ${percent(margemRevenda)} de margem para o parceiro`
+        }
+      >
+        <div className="flex gap-1">
+          <CampoNumero valor={valor} vazio min={0} sufixo="€" placeholder={String(sugerido).replace(".", ",")} aoMudar={aoMudar} />
+          {valor == null && sugerido > 0 && (
+            <button type="button" className="botao-secundario whitespace-nowrap px-2 text-xs" onClick={() => aoMudar(sugerido)}>
+              Usar sugerido
+            </button>
+          )}
+        </div>
+      </Rotulado>
     </div>
   );
 }
