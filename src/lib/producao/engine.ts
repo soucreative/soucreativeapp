@@ -535,7 +535,9 @@ export function calcularOrcamento(params: Parametros, o: Orcamento): ResultadoOr
   const fixados = o.estado !== "rascunho" ? o.congelado?.linhas : undefined;
   const totalLinha = (l: ResultadoLinha) => fixados?.[l.linha.id] ?? l.total;
 
-  const escolha = o.opcaoEscolhida ?? {};
+  // A escolha do cliente só conta num orçamento ganho: num rascunho ou enviado
+  // (duplicado de um ganho, ou ganho anulado) mostram-se todas as opções
+  const escolha = o.estado === "ganho" ? (o.opcaoEscolhida ?? {}) : {};
   const incluida = (l: LinhaOrcamento) => !l.grupoOpcao || escolha[l.grupoOpcao] === l.id;
   const linhasTodas = o.linhas.map((l) => ({ ...porId.get(l.id)!, incluida: incluida(l) }));
   const linhas = linhasTodas.filter((l) => l.incluida);

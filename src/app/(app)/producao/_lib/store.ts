@@ -281,7 +281,12 @@ export function atualizarOrcamento(id: string, fn: (o: Orcamento) => Orcamento) 
 export async function duplicarOrcamento(id: string): Promise<Orcamento | null> {
   const original = ler().orcamentos.find((x) => x.id === id);
   if (!original) return null;
-  const { id: _id, numero: _n, congelado: _c, motivoPerda: _m, produzidoEm: _p, ...resto } = original;
+  // A cópia começa do zero: sem preço fixado, escolha do cliente, produção nem cancelamento
+  const {
+    id: _id, numero: _n, congelado: _c, motivoPerda: _m, produzidoEm: _p,
+    opcaoEscolhida: _e, producao: _pr, motivoCancelamento: _mc, canceladoEm: _ce, estadoAntesCancelar: _ec,
+    ...resto
+  } = original;
   return criarOrcamento({
     ...structuredClone(resto),
     estado: "rascunho",
