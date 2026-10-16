@@ -4,11 +4,11 @@ import { useState, useRef, useSyncExternalStore, useTransition, KeyboardEvent } 
 import Link from 'next/link'
 import { quickUpdateEmployee } from '../actions'
 import type { Employee } from '@/types/database'
-import { DEPARTMENTS } from '@/lib/departments'
+import { EMPLOYEE_DEPARTMENTS } from '@/lib/departments'
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
-const DEPT_OPTIONS = [...DEPARTMENTS]
+const DEPT_OPTIONS = [...EMPLOYEE_DEPARTMENTS]
 
 // ── Resultado da última gravação ───────────────────────────────────────────
 // As células gravam no momento; este aviso por cima da tabela diz se correu

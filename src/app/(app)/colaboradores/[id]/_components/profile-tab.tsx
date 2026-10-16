@@ -3,7 +3,7 @@
 import { useActionState, useState } from 'react'
 import type { Employee, EmployeeTaxInfo, Contract } from '@/types/database'
 import { updateEmployeeProfile, updateFiscalSituation, inviteEmployee, resendInvite } from '../actions'
-import { DEPARTMENTS } from '@/lib/departments'
+import { EMPLOYEE_DEPARTMENTS } from '@/lib/departments'
 
 const irsTableLabel: Record<string, string> = {
   single_0_false:                  'Tabela I',
@@ -311,7 +311,7 @@ export default function ProfileTab({
             { value: 'curricular_intern',   label: 'Estágio Curricular' },
           ]} />
           <Select label="Departamento" name="department" defaultValue={employee.department ?? ''} required options={
-            DEPARTMENTS.map(d => ({ value: d, label: d }))
+            EMPLOYEE_DEPARTMENTS.map(d => ({ value: d, label: d }))
           } />
           <Select label="Perfil de acesso" name="app_role" defaultValue={employee.app_role} options={[
             { value: 'intern',     label: 'Estagiário/a' },

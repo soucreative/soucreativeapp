@@ -3,7 +3,7 @@
 import { useActionState, useState } from 'react'
 import Link from 'next/link'
 import { createEmployee } from '../actions'
-import { DEPARTMENTS } from '@/lib/departments'
+import { EMPLOYEE_DEPARTMENTS } from '@/lib/departments'
 
 export default function EmployeeForm() {
   const [state, action, pending] = useActionState(createEmployee, null)
@@ -32,7 +32,7 @@ export default function EmployeeForm() {
             { value: 'curricular_intern',   label: 'Estágio Curricular' },
           ]} />
           <Select label="Departamento" name="department" required options={
-            DEPARTMENTS.map(d => ({ value: d, label: d }))
+            EMPLOYEE_DEPARTMENTS.map(d => ({ value: d, label: d }))
           } />
           <Select label="Perfil de acesso" name="app_role" options={[
             { value: 'intern',     label: 'Estagiário/a' },
