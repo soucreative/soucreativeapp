@@ -313,6 +313,7 @@ export default function EditorParametros() {
                   Aluguer/h sugerido
                 </th>
                 <th>Estimativa</th>
+                <th title="Desligado: a máquina ainda não chegou e não entra nos orçamentos nem no pipeline">Já na SOU</th>
               </tr>
             </thead>
             <tbody>
@@ -344,6 +345,9 @@ export default function EditorParametros() {
                     <td className="num">{euros(ch / (1 - margemRef))}</td>
                     <td>
                       <Interruptor ligado={m.estimativa} aoMudar={(v) => mudar((d) => void (d.maquinas[i].estimativa = v))} rotulo="" />
+                    </td>
+                    <td>
+                      <Interruptor ligado={m.disponivel !== false} aoMudar={(v) => mudar((d) => void (d.maquinas[i].disponivel = v))} rotulo="" />
                     </td>
                   </tr>
                 );

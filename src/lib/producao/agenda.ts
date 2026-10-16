@@ -60,7 +60,7 @@ export function recursos(params: Parametros): Recurso[] {
     return p ? tempoProducao(p) : 0;
   };
   return [
-    ...params.maquinas.map((m) => ({ id: m.id, nome: m.nome.split(" (")[0], minutosDia: cap.horasDiaMaquina * 60 * (m.cabecas ?? 1) })),
+    ...params.maquinas.filter((m) => m.disponivel !== false).map((m) => ({ id: m.id, nome: m.nome.split(" (")[0], minutosDia: cap.horasDiaMaquina * 60 * (m.cabecas ?? 1) })),
     { id: "operador", nome: "Operadores", minutosDia: cap.horasDiaPessoa * 60 * Math.max(pessoa("operador"), 0) },
     { id: "designer", nome: "Design", minutosDia: cap.horasDiaPessoa * 60 * Math.max(pessoa("designer"), 0) },
   ];

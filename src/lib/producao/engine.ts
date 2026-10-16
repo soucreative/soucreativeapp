@@ -140,7 +140,9 @@ export function paramTecnica(params: Parametros, t: Tecnica): ParamTecnica {
 export function maquinasDaTecnica(params: Parametros, t: Tecnica): string[] {
   const pt = paramTecnica(params, t);
   const ids = pt.maquinasIds?.length ? pt.maquinasIds : [pt.maquinaId];
-  return ids.filter((id) => params.maquinas.some((m) => m.id === id));
+  // Só as que já estão na SOU; se nenhuma estiver, fica a principal, para o cálculo não parar
+  const presentes = ids.filter((id) => params.maquinas.some((m) => m.id === id && m.disponivel !== false));
+  return presentes.length ? presentes : ids.filter((id) => params.maquinas.some((m) => m.id === id)).slice(0, 1);
 }
 
 /**

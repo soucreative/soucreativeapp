@@ -83,6 +83,8 @@ export interface Maquina {
   horasUsoAno: number;
   energiaHora: number;
   cabecas?: number;
+  // false = ainda não está na SOU (encomendada): não entra nos orçamentos nem no pipeline
+  disponivel?: boolean;
   estimativa: boolean;
   nota?: string;
 }

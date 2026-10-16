@@ -212,7 +212,7 @@ export const PARAMETROS_INICIAIS: Parametros = {
         linhaMPor1000: 6,
         entretelaFator: 1.5,
         pontosPorCm2: 180, // para estimar quando ainda não há ficheiro
-        atencaoOperadorPct: 0.5, // fatia do tempo de máquina em que o operador está preso
+        atencaoOperadorPct: 0.15, // fatia do tempo de máquina em que o operador está preso; no resto faz outras coisas
         paraleloAPartirDe: 10, // a partir de quantas peças o automático usa as duas máquinas
       },
       estimativa: true,
