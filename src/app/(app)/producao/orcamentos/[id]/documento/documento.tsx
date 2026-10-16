@@ -230,7 +230,7 @@ export default function Documento() {
           </section>
         )}
         {(e.condicoes || (pecasDoCliente && e.condicoesPecasCliente)) && (
-          <section className="mt-8 break-before-auto">
+          <section className="mt-8 break-inside-avoid print:mt-0 print:break-before-page">
             <h2 className="mb-2 text-xs uppercase tracking-[0.2em] text-mostarda">Termos e condições</h2>
             <Condicoes texto={[pecasDoCliente ? e.condicoesPecasCliente : "", e.condicoes].filter(Boolean).join("\n\n")} />
           </section>
