@@ -3,7 +3,14 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMemo } from "react";
-import { calcularOrcamento, custosPorRubrica, NOME_TECNICA, type ResultadoAplicacao } from "@/lib/producao/engine";
+import {
+  calcularOrcamento,
+  custosPorRubrica,
+  NOME_TECNICA,
+  type CustosRubrica,
+  type ResultadoAplicacao,
+  type ResultadoOrcamento,
+} from "@/lib/producao/engine";
 import { ETAPAS, etapaDe } from "@/lib/producao/agenda";
 import { ESTADOS } from "@/lib/producao/estados";
 import { dataPt, euros, horasMin, numero, percent } from "@/lib/producao/format";
@@ -32,6 +39,26 @@ export default function FolhaObra() {
   const cliente = dados.clientes.find((x) => x.id === o.clienteId);
   const responsavel = dados.equipa.find((x) => x.id === o.producao?.responsavelId)?.nome;
   const linhas = r.linhas.filter((l) => l.incluida);
+
+  // Enquanto o cliente não escolhe, a folha mostra todas as opções e compara-as;
+  // depois de ganho, fica só a escolhida
+  const abertos = r.grupos.filter((g) => !g.escolhida);
+  const emAberto = abertos.length > 0;
+  const letra = (i: number) => String.fromCharCode(65 + i);
+  const rotuloOpcao = new Map<string, string>();
+  for (const g of abertos) {
+    g.opcoes.forEach((x, i) => rotuloOpcao.set(x.linhaId, abertos.length > 1 ? `${g.grupo} ${letra(i)}` : `Opção ${letra(i)}`));
+  }
+  type Cenario = { nome: string; r: ResultadoOrcamento; c: CustosRubrica };
+  let combos: Record<string, string>[] = [{}];
+  for (const g of abertos) combos = combos.flatMap((cb) => g.opcoes.map((x) => ({ ...cb, [g.grupo]: x.linhaId })));
+  const cenarios: Cenario[] = emAberto
+    ? combos.slice(0, 9).map((cb) => {
+        const rc = calcularOrcamento(p, { ...o, estado: "ganho", opcaoEscolhida: { ...o.opcaoEscolhida, ...cb } });
+        return { nome: Object.values(cb).map((id) => rotuloOpcao.get(id)).join(" + "), r: rc, c: custosPorRubrica(p, rc) };
+      })
+    : [{ nome: "", r, c }];
+  const linhasProducao = emAberto ? r.linhas : linhas;
   const nomeMaquina = (mid: string) => p.maquinas.find((m) => m.id === mid)?.nome.split(" (")[0] ?? mid;
 
   // Preços como no documento do cliente: depois de enviado, os fixados
@@ -54,7 +81,11 @@ export default function FolhaObra() {
 
   // Linhas de faturação: as linhas com grelha partem-se por variante (um código do TOC cada)
   type LinhaFatura = { codigo: string; descricao: string; qtd: number; precoUnit: number; desconto: number; total: number };
-  const faturacao: LinhaFatura[] = linhas.flatMap((l) => {
+  const faturacao: (LinhaFatura & { opcao?: string })[] = linhasProducao.flatMap((l) => {
+    const opcao = rotuloOpcao.get(l.linha.id);
+    return partesFatura(l).map((x) => ({ ...x, opcao }));
+  });
+  function partesFatura(l: (typeof linhas)[number]): LinhaFatura[] {
     const total = totalLinha(l);
     const precoUnit = l.qtdFaturada > 0 ? total / l.qtdFaturada : 0;
     const tabela = (sugeridos?.[l.linha.id] ?? l.totalSugerido) * fator;
@@ -79,7 +110,7 @@ export default function FolhaObra() {
       return partes;
     }
     return [{ codigo: codigo(l.linha.artigoId), descricao: l.linha.descricao || "Artigo", qtd: l.qtdFaturada, precoUnit, desconto, total }];
-  });
+  }
 
   const etapaId = etapaDe(o);
   const etapa = etapaId ? ETAPAS.find((x) => x.id === etapaId) : undefined;
@@ -142,14 +173,21 @@ export default function FolhaObra() {
           </dl>
         </header>
 
-        {r.opcoesPorEscolher && (
+        {emAberto && (
           <p className="rounded bg-beige-claro px-3 py-2 text-xs text-mostarda">
-            Há opções por escolher: os valores contam só os artigos sem opção. Ao marcar o orçamento como ganho, escolha a opção e a
-            folha passa a incluí-la.
+            O cliente ainda não escolheu: a folha mostra todas as opções e compara custo e margem de cada uma. Ao marcar o orçamento
+            como ganho com a opção escolhida, fica só essa.
           </p>
         )}
 
         {/* ── Resumo económico ── */}
+        {cenarios.length > 1 ? (
+          <section className="break-inside-avoid">
+            <Titulo>Resumo económico por opção</Titulo>
+            <ComparacaoCenarios cenarios={cenarios} fator={fator} />
+            {fixados && <p className="mt-1 text-[11px] text-cinza">Venda ao preço fixado no envio; custos com os parâmetros de hoje.</p>}
+          </section>
+        ) : (
         <section className="break-inside-avoid">
           <Titulo>Resumo económico</Titulo>
           <div className="grid gap-4 sm:grid-cols-[1fr_auto] print:grid-cols-[1fr_auto]">
@@ -192,18 +230,21 @@ export default function FolhaObra() {
           </div>
           {fixados && <p className="mt-1 text-[11px] text-cinza">Venda ao preço fixado no envio; custos com os parâmetros de hoje.</p>}
         </section>
+        )}
 
         {/* ── Produção ── */}
         <section>
           <Titulo>Produção</Titulo>
           <div className="space-y-3">
-            {linhas.map((l, i) => {
+            {linhasProducao.map((l, i) => {
+              const opcao = rotuloOpcao.get(l.linha.id);
               const modelo = l.linha.modeloId ? modelos.find((m) => m.id === l.linha.modeloId) : undefined;
               const grelha = (l.linha.grelha ?? []).filter((g) => g.quantidade > 0);
               return (
                 <div key={l.linha.id} className="break-inside-avoid rounded-md border border-linha p-3">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <div className="font-semibold">
+                      {opcao && <span className="mr-2 rounded bg-beige-claro px-1.5 py-0.5 text-xs font-medium text-mostarda">{opcao}</span>}
                       {i + 1}. {l.linha.descricao || "Artigo"}
                     </div>
                     <div className="text-sm">
@@ -282,6 +323,9 @@ export default function FolhaObra() {
             )}
           </div>
 
+          {cenarios.length > 1 ? (
+            <ConsumosTemposCenarios cenarios={cenarios} nomeMaquina={nomeMaquina} />
+          ) : (
           <div className="mt-3 grid gap-4 sm:grid-cols-2 print:grid-cols-2">
             <div className="break-inside-avoid">
               <h3 className="mb-1 text-xs font-semibold uppercase tracking-wider text-cinza">Consumíveis previstos</h3>
@@ -331,6 +375,7 @@ export default function FolhaObra() {
               </table>
             </div>
           </div>
+          )}
         </section>
 
         {/* ── Faturação ── */}
@@ -351,7 +396,10 @@ export default function FolhaObra() {
               {faturacao.map((f, i) => (
                 <tr key={i} className="border-b border-linha/60">
                   <td className="py-1 font-mono">{f.codigo}</td>
-                  <td className="py-1">{f.descricao}</td>
+                  <td className="py-1">
+                    {f.opcao && <span className="mr-1.5 font-medium text-mostarda">{f.opcao}</span>}
+                    {f.descricao}
+                  </td>
                   <td className="py-1 text-right tabular-nums">{numero(f.qtd)}</td>
                   <td className="py-1 text-right tabular-nums">{euros(f.precoUnit)}</td>
                   <td className="py-1 text-right tabular-nums">{f.desconto ? percent(f.desconto) : ""}</td>
@@ -370,6 +418,28 @@ export default function FolhaObra() {
               )}
             </tbody>
           </table>
+          {cenarios.length > 1 ? (
+            <table className="ml-auto mt-2 text-sm">
+              <thead>
+                <tr className="text-xs text-cinza">
+                  <th />
+                  <th className="px-2 text-right font-medium">s/ IVA</th>
+                  <th className="px-2 text-right font-medium">IVA</th>
+                  <th className="pl-2 text-right font-medium">c/ IVA</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cenarios.map((x) => (
+                  <tr key={x.nome} className="border-t border-linha/60">
+                    <td className="py-0.5 pr-3">Com {x.nome}</td>
+                    <td className="px-2 text-right tabular-nums">{euros(x.r.total * fator)}</td>
+                    <td className="px-2 text-right tabular-nums text-cinza">{euros(x.r.iva * fator)}</td>
+                    <td className="pl-2 text-right font-semibold tabular-nums">{euros(x.r.totalComIva * fator)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
           <div className="ml-auto mt-2 w-64 space-y-0.5 text-sm">
             {r.desconto > 0 && (
               <>
@@ -381,6 +451,8 @@ export default function FolhaObra() {
             <Par nome={`IVA ${percent(p.iva)}`} valor={euros(r.iva * fator)} />
             <Par nome="Total c/ IVA" valor={euros(r.totalComIva * fator)} forte />
           </div>
+          )}
+          {emAberto && <p className="mt-1 text-xs text-cinza">Fatura-se só a opção que o cliente escolher.</p>}
           {faturacao.some((f) => f.codigo === "provisório") && (
             <p className="mt-2 text-xs text-alerta">Há artigos provisórios: criar o artigo no TOC antes de faturar.</p>
           )}
@@ -468,6 +540,155 @@ function Par({ nome, valor, forte, alerta }: { nome: string; valor: string; fort
     <div className="flex justify-between gap-3">
       <span className="text-cinza">{nome}</span>
       <span className={`tabular-nums ${forte ? "font-semibold" : ""} ${alerta ? "text-alerta" : ""}`}>{valor}</span>
+    </div>
+  );
+}
+
+const RUBRICAS: [keyof CustosRubrica, string][] = [
+  ["artigos", "Artigos"],
+  ["consumiveis", "Consumíveis"],
+  ["maquinas", "Máquinas"],
+  ["operador", "Operador"],
+  ["designer", "Designer"],
+  ["portes", "Portes"],
+];
+
+/** Custo, venda e margem de cada opção, lado a lado. */
+function ComparacaoCenarios({ cenarios, fator }: { cenarios: { nome: string; r: ResultadoOrcamento; c: CustosRubrica }[]; fator: number }) {
+  const venda = (x: (typeof cenarios)[number]) => x.r.total * fator;
+  const margem = (x: (typeof cenarios)[number]) => venda(x) - x.c.total;
+  const melhor = Math.max(...cenarios.map(margem));
+  type C = (typeof cenarios)[number];
+  const celulas = (v: (x: C) => string, forte?: boolean, alerta?: (x: C) => boolean) => (
+    <>
+      {cenarios.map((x) => (
+        <td key={x.nome} className={`py-1 pl-3 text-right tabular-nums ${forte ? "font-semibold" : ""} ${alerta?.(x) ? "text-alerta" : ""}`}>
+          {v(x)}
+        </td>
+      ))}
+    </>
+  );
+  return (
+    <table className="w-full text-sm">
+      <thead>
+        <tr className="border-b border-linha text-xs text-cinza">
+          <th className="py-1 text-left font-medium" />
+          {cenarios.map((x) => (
+            <th key={x.nome} className="py-1 pl-3 text-right font-medium text-mostarda">
+              {x.nome}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {RUBRICAS.filter(([k]) => cenarios.some((x) => (x.c[k] as number) > 0.004)).map(([k, nome]) => (
+          <tr key={k} className="border-b border-linha/60">
+            <td className="py-1">{nome}</td>
+            {celulas((x) => euros(x.c[k] as number))}
+          </tr>
+        ))}
+        <tr className="border-b border-linha">
+          <td className="py-1 font-semibold">Custo total</td>
+          {celulas((x) => euros(x.c.total), true)}
+        </tr>
+        <tr className="border-b border-linha/60">
+          <td className="py-1">Venda s/ IVA</td>
+          {celulas((x) => euros(venda(x)))}
+        </tr>
+        <tr className="border-b border-linha/60">
+          <td className="py-1 font-semibold">Margem</td>
+          {celulas((x) => euros(margem(x)) + (cenarios.length > 1 && margem(x) === melhor ? " ★" : ""), true, (x) => margem(x) < 0)}
+        </tr>
+        <tr className="border-b border-linha/60">
+          <td className="py-1 font-semibold">Margem %</td>
+          {celulas((x) => (venda(x) > 0 ? percent(margem(x) / venda(x)) : "—"), true, (x) => margem(x) < 0)}
+        </tr>
+        <tr>
+          <td className="py-1 text-cinza">Pessoas</td>
+          {celulas((x) => `${euros(x.c.operador + x.c.designer)} · ${horasMin(x.r.minutosOperador + x.r.minutosDesigner)}`)}
+        </tr>
+      </tbody>
+    </table>
+  );
+}
+
+/** Tempos e consumíveis previstos de cada opção. */
+function ConsumosTemposCenarios({
+  cenarios,
+  nomeMaquina,
+}: {
+  cenarios: { nome: string; r: ResultadoOrcamento; c: CustosRubrica }[];
+  nomeMaquina: (id: string) => string;
+}) {
+  const maquinas = [...new Set(cenarios.flatMap((x) => Object.keys(x.r.minutosMaquina)))];
+  const consumiveis = [...new Map(cenarios.flatMap((x) => x.c.detalheConsumiveis.map((k) => [k.id, k] as const))).values()];
+  const cel = "py-0.5 pl-3 text-right tabular-nums";
+  return (
+    <div className="mt-3 break-inside-avoid">
+      <h3 className="mb-1 text-xs font-semibold uppercase tracking-wider text-cinza">Tempos e consumíveis previstos, por opção</h3>
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="text-cinza">
+            <th />
+            {cenarios.map((x) => (
+              <th key={x.nome} className="pl-3 text-right font-medium text-mostarda">
+                {x.nome}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {maquinas.map((m) => (
+            <tr key={m} className="border-t border-linha/60">
+              <td className="py-0.5">{nomeMaquina(m)}</td>
+              {cenarios.map((x) => (
+                <td key={x.nome} className={cel}>
+                  {x.r.minutosMaquina[m] ? horasMin(x.r.minutosMaquina[m]) : "—"}
+                </td>
+              ))}
+            </tr>
+          ))}
+          <tr className="border-t border-linha/60">
+            <td className="py-0.5">Operador</td>
+            {cenarios.map((x) => (
+              <td key={x.nome} className={cel}>
+                {horasMin(x.r.minutosOperador)}
+              </td>
+            ))}
+          </tr>
+          <tr className="border-t border-linha/60">
+            <td className="py-0.5">Designer</td>
+            {cenarios.map((x) => (
+              <td key={x.nome} className={cel}>
+                {horasMin(x.r.minutosDesigner)}
+              </td>
+            ))}
+          </tr>
+          {maquinas.length > 0 && (
+            <tr className="border-t border-linha font-semibold">
+              <td className="py-0.5">Prazo de máquina</td>
+              {cenarios.map((x) => (
+                <td key={x.nome} className={cel}>
+                  {horasMin(x.r.prazoMaquinaMin)}
+                </td>
+              ))}
+            </tr>
+          )}
+          {consumiveis.map((k) => (
+            <tr key={k.id} className="border-t border-linha/60">
+              <td className="py-0.5">{k.nome}</td>
+              {cenarios.map((x) => {
+                const q = x.c.detalheConsumiveis.find((y) => y.id === k.id);
+                return (
+                  <td key={x.nome} className={cel}>
+                    {q ? `${numero(Math.round(q.quantidade * 100) / 100)} ${q.unidade}` : "—"}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
