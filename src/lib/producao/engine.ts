@@ -428,8 +428,14 @@ export function calcularLinha(
   const totalSugerido = qtdFaturada * (vendaArtigoUn + vendaAplPeca) + vendaSetup + portes;
   const precoUnitSugerido = qtdFaturada > 0 ? totalSugerido / qtdFaturada : 0;
 
+  // Preço à mão: para cima sem limite; para baixo, no máximo o desconto comercial
   const manual = linha.precoUnitManual;
-  const total = manual != null && manual > 0 ? manual * qtdFaturada : totalSugerido;
+  const piso = precoUnitSugerido * (1 - (params.descontoMaximo ?? 0.05));
+  const descontoLimitado = manual != null && manual > 0 && manual < piso - 0.005;
+  if (descontoLimitado) {
+    avisos.push(`Desconto acima de ${Math.round((params.descontoMaximo ?? 0.05) * 100)}%: o preço fica em ${piso.toFixed(2)} €/un.`);
+  }
+  const total = manual != null && manual > 0 ? Math.max(manual, descontoLimitado ? piso : 0) * qtdFaturada : totalSugerido;
 
   const custoPeca = aplicacoes.reduce((s, r) => s + r.custoConsumiveis + r.custoMaquina + r.custoOperador + r.custoDesigner, 0);
   const custo =
@@ -656,7 +662,7 @@ export function precosPorQuantidade(
   };
   const manual = o.linhas.find((l) => l.id === linhaId)?.precoUnitManual;
   const base = manual != null && manual > 0 ? sugeridoCom().precoUnitSugerido : 0;
-  const fator = base > 0 ? manual! / base : 1;
+  const fator = base > 0 ? Math.max(manual! / base, 1 - (params.descontoMaximo ?? 0.05)) : 1;
   return quantidades
     .filter((q) => q > 0)
     .map((q) => {

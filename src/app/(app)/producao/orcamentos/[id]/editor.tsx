@@ -61,6 +61,7 @@ function Editor({ o }: { o: Orcamento }) {
             margem: r.margem,
             em: new Date().toISOString(),
             linhas: Object.fromEntries(r.linhas.map((l) => [l.linha.id, l.total])),
+            sugeridos: Object.fromEntries(r.linhas.map((l) => [l.linha.id, l.totalSugerido])),
           });
     // Com opções, o total fixado passa a ser o da opção que o cliente escolheu
     if (estado === "ganho" && extra.opcaoEscolhida && congelado) {
@@ -566,11 +567,12 @@ function EditorLinha({
               .join(" · ")}
           />
           <Dado nome="Preço sugerido/un" valor={euros(r.precoUnitSugerido)} />
-          <Rotulado rotulo="Preço praticado/un" ajuda={l.precoUnitManual ? `${percent(l.precoUnitManual / r.precoUnitSugerido - 1)} vs sugerido` : "vazio = sugerido"}>
+          <Rotulado rotulo="Preço praticado/un" ajuda={l.precoUnitManual ? `${percent(l.precoUnitManual / r.precoUnitSugerido - 1)} vs sugerido · mín. ${euros(r.precoUnitSugerido * (1 - (dadosLinha.parametros.descontoMaximo ?? 0.05)))}` : "vazio = sugerido"}>
             <CampoNumero valor={l.precoUnitManual} aoMudar={(n) => set({ precoUnitManual: n })} sufixo="€" min={0} vazio />
           </Rotulado>
           <Dado nome="Total da linha" valor={euros(r.total)} />
           <Dado nome="Margem" valor={percent(r.margem)} alerta={r.margem < 0} detalhe={`custo ${euros(r.custo)}`} />
+          <AlertaDesconto r={r} margemSegura={dadosLinha.parametros.margemSegura ?? 0.3} descontoMaximo={dadosLinha.parametros.descontoMaximo ?? 0.05} />
           {alternativas.length > 0 && (
             <div className="sm:col-span-2 lg:col-span-5 rounded-md bg-papel px-3 py-2 text-xs">
               <span className="text-cinza">O cliente vê também: </span>
@@ -602,6 +604,42 @@ function QuantidadesAlternativas({ valor, aoMudar }: { valor?: number[]; aoMudar
         aoMudar(q.length ? q : undefined);
       }}
     />
+  );
+}
+
+/**
+ * Quando o preço praticado fica abaixo do sugerido: quanto se dá de desconto e
+ * o que acontece à margem. Segura acima da margem segura dos parâmetros,
+ * arriscada entre essa e zero, prejuízo abaixo do custo.
+ */
+function AlertaDesconto({ r, margemSegura, descontoMaximo }: { r: ResultadoLinha; margemSegura: number; descontoMaximo: number }) {
+  const manual = r.linha.precoUnitManual;
+  const desconto = r.totalSugerido - r.total;
+  if (!manual || desconto < 0.005 || r.totalSugerido <= 0) return null;
+  const limitado = manual < r.precoUnit - 0.005;
+  const margemSugerida = (r.totalSugerido - r.custo) / r.totalSugerido;
+  const nivel = r.margem < 0 ? "prejuizo" : r.margem < margemSegura ? "arriscada" : "segura";
+  const estilo = {
+    segura: "border-verde/30 bg-verde-claro text-verde-escuro",
+    arriscada: "border-mostarda/40 bg-beige-claro text-tinta",
+    prejuizo: "border-alerta/40 bg-alerta/10 text-alerta",
+  }[nivel];
+  const titulo = { segura: "Desconto seguro", arriscada: "Desconto arriscado", prejuizo: "Desconto com prejuízo" }[nivel];
+  const conselho = {
+    segura: `A margem continua acima de ${percent(margemSegura)}.`,
+    arriscada: `A margem fica abaixo de ${percent(margemSegura)}: uma peça estragada ou uma afinação mais longa come o lucro.`,
+    prejuizo: `O preço não cobre o custo (${euros(r.custo)}): perde ${euros(r.custo - r.total)} nesta linha.`,
+  }[nivel];
+  return (
+    <div className={`sm:col-span-2 lg:col-span-5 rounded-md border px-3 py-2 text-xs ${estilo}`}>
+      {limitado && (
+        <div className="mb-1 font-medium text-alerta">
+          O desconto máximo é {percent(descontoMaximo)}: {euros(manual)} não é aceite e o preço fica em {euros(r.precoUnit)}/un.
+        </div>
+      )}
+      <b>{titulo}</b>: {percent(desconto / r.totalSugerido)} abaixo do sugerido (− {euros(desconto)} na linha). A margem
+      passa de {percent(margemSugerida)} para {percent(r.margem)}. {conselho} No PDF aparece como desconto.
+    </div>
   );
 }
 

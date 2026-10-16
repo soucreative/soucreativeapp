@@ -36,9 +36,18 @@ export default function Documento() {
   const fator = !fixados && o.congelado && o.estado !== "rascunho" && r.total > 0 ? o.congelado.total / r.total : 1;
   const totalLinha = (l: (typeof r.linhas)[number]) => (fixados?.[l.linha.id] ?? l.total) * fator;
   const precoUnit = (l: (typeof r.linhas)[number]) => (l.qtdFaturada > 0 ? totalLinha(l) / l.qtdFaturada : 0);
+  // Preço praticado abaixo do sugerido: o sugerido é o preço de tabela e a diferença mostra-se como desconto
+  const sugeridos = o.estado !== "rascunho" ? o.congelado?.sugeridos : undefined;
+  const totalTabela = (l: (typeof r.linhas)[number]) => {
+    const tabela = (sugeridos?.[l.linha.id] ?? l.totalSugerido) * fator;
+    return l.linha.precoUnitManual && tabela - totalLinha(l) >= 0.005 ? tabela : totalLinha(l);
+  };
+  const precoTabela = (l: (typeof r.linhas)[number]) =>
+    totalTabela(l) > totalLinha(l) && l.qtdFaturada > 0 ? totalTabela(l) / l.qtdFaturada : undefined;
   // Linhas que entram na tabela: as normais e, depois de ganho, a opção escolhida
   const linhasTabela = r.linhas.filter((l) => l.incluida);
   const gruposAbertos = r.grupos.filter((g) => !g.escolhida);
+  const descontoArtigos = linhasTabela.reduce((s, l) => s + totalTabela(l) - totalLinha(l), 0);
   const pecasDoCliente = o.linhas.some((l) => l.artigoDoCliente);
   const imagemDe = (l: (typeof r.linhas)[number]) => dados.artigos.find((a) => a.id === l.linha.artigoId)?.imagem;
   const alternativasDe = (l: (typeof r.linhas)[number]) =>
@@ -102,7 +111,7 @@ export default function Documento() {
             </thead>
             <tbody>
               {linhasTabela.map((l) => (
-                <LinhaDoc key={l.linha.id} l={l} precoUnit={precoUnit(l)} total={totalLinha(l)} imagem={imagemDe(l)} alternativas={alternativasDe(l)} />
+                <LinhaDoc key={l.linha.id} l={l} precoUnit={precoUnit(l)} precoTabela={precoTabela(l)} total={totalLinha(l)} imagem={imagemDe(l)} alternativas={alternativasDe(l)} />
               ))}
               {r.vendaCriacao > 0 && (
                 <tr className="border-b border-linha">
@@ -141,6 +150,7 @@ export default function Documento() {
                         l={l}
                         rotulo={`Opção ${String.fromCharCode(65 + i)}`}
                         precoUnit={precoUnit(l)}
+                        precoTabela={precoTabela(l)}
                         total={totalLinha(l)}
                         imagem={imagemDe(l)}
                         alternativas={alternativasDe(l)}
@@ -165,6 +175,18 @@ export default function Documento() {
             />
           ) : (
             <>
+              {descontoArtigos > 0 && (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-cinza">Preço de tabela</span>
+                    <span className="tabular-nums">{euros(r.subtotal * fator + descontoArtigos)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-cinza">Desconto nos artigos</span>
+                    <span className="tabular-nums">− {euros(descontoArtigos)}</span>
+                  </div>
+                </>
+              )}
               {r.desconto > 0 && (
                 <>
                   <div className="flex justify-between">
@@ -218,6 +240,7 @@ function LinhaDoc({
   l,
   rotulo,
   precoUnit,
+  precoTabela,
   total,
   totalOrcamento,
   imagem,
@@ -226,6 +249,7 @@ function LinhaDoc({
   l: ResultadoLinha;
   rotulo?: string;
   precoUnit: number;
+  precoTabela?: number;
   total: number;
   totalOrcamento?: number;
   imagem?: string;
@@ -243,6 +267,9 @@ function LinhaDoc({
         {rotulo && <div className="text-xs font-medium uppercase tracking-wider text-mostarda">{rotulo}</div>}
         <div className="font-medium">{l.linha.descricao || "Artigo"}</div>
         {l.linha.artigoDoCliente && <div className="text-xs text-cinza">Peça fornecida pelo cliente</div>}
+        {precoTabela != null && (
+          <div className="text-xs font-medium text-verde">Desconto de {percent(1 - precoUnit / precoTabela)} sobre o preço de tabela</div>
+        )}
         {l.aplicacoes.map((a) => (
           <div key={a.aplicacao.id} className="text-xs text-cinza">
             {descreverAplicacao(a.aplicacao)}
@@ -262,7 +289,10 @@ function LinhaDoc({
         </div>
       </td>
       <td className="py-3 px-2 text-right tabular-nums">{numero(l.qtdFaturada)}</td>
-      <td className="py-3 px-2 text-right tabular-nums">{euros(precoUnit)}</td>
+      <td className="py-3 px-2 text-right tabular-nums">
+        {precoTabela != null && <div className="text-xs text-cinza line-through">{euros(precoTabela)}</div>}
+        {euros(precoUnit)}
+      </td>
       <td className="py-3 px-2 text-right tabular-nums">{euros(total)}</td>
       {totalOrcamento != null && <td className="py-3 pl-2 text-right font-medium tabular-nums">{euros(totalOrcamento)}</td>}
     </tr>

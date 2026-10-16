@@ -545,6 +545,12 @@ export default function EditorParametros() {
               <Rotulado rotulo="Validade (dias)">
                 <CampoNumero valor={p.validadeDias} aoMudar={(n) => mudar((d) => void (d.validadeDias = Math.round(n ?? 30)))} />
               </Rotulado>
+              <Rotulado rotulo="Desconto máximo" ajuda="Quanto o preço praticado pode ficar abaixo do sugerido. Para cima não há limite.">
+                <CampoNumero valor={p.descontoMaximo ?? 0.05} percentagem aoMudar={(n) => mudar((d) => void (d.descontoMaximo = n ?? 0))} />
+              </Rotulado>
+              <Rotulado rotulo="Margem segura" ajuda="Um desconto que deixe a margem abaixo disto é assinalado como arriscado.">
+                <CampoNumero valor={p.margemSegura ?? 0.3} percentagem aoMudar={(n) => mudar((d) => void (d.margemSegura = n ?? 0))} />
+              </Rotulado>
               <Rotulado rotulo="Valor mínimo de encomenda">
                 <CampoNumero valor={p.valorMinimoEncomenda} sufixo="€" aoMudar={(n) => mudar((d) => void (d.valorMinimoEncomenda = n ?? 0))} />
               </Rotulado>

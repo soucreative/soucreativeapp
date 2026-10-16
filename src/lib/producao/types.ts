@@ -159,6 +159,10 @@ export interface Parametros {
   setups: Record<TipoSetup, number>;
   complexidadeBordado: Record<"simples" | "medio" | "complexo", number>; // min de digitalização
   valorMinimoEncomenda: number;
+  // Abaixo desta margem, um desconto é arriscado; abaixo de 0 dá prejuízo
+  margemSegura?: number;
+  // Desconto máximo do preço praticado sobre o sugerido (para cima não há limite)
+  descontoMaximo?: number;
   // Famílias de produtos do TOC que entram no catálogo de artigos (nomes)
   tocFamiliasArtigos?: string[];
   tocUltimaSincronizacao?: string;
@@ -269,6 +273,8 @@ export interface Orcamento {
     // Total de cada linha no momento do envio: o documento e as opções usam
     // estes valores, para o preço não mudar depois de o cliente o receber
     linhas?: Record<string, number>;
+    // Total sugerido de cada linha no envio: o desconto mostrado não muda depois
+    sugeridos?: Record<string, number>;
   };
   // Opção escolhida pelo cliente em cada grupo (grupo → id da linha)
   opcaoEscolhida?: Record<string, string>;
