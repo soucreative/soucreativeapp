@@ -291,6 +291,8 @@ export interface Orcamento {
   descontoPotencialPct: number;
   descontoMotivo?: string;
   notas?: string;
+  // No documento: mostrar o quadro do total (sem opções). Vazio = mostrar
+  mostrarTotal?: boolean;
   linhas: LinhaOrcamento[];
   // Fotografia do cálculo quando sai de rascunho: um orçamento enviado
   // não pode mudar de preço porque alguém mexeu nos parâmetros.
