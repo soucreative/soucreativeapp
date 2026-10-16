@@ -375,6 +375,8 @@ export interface ResultadoLinha {
   portes: number;
   totalSugerido: number;
   precoUnitSugerido: number;
+  // Preço por unidade pedido (à mão ou pelo desconto %), antes do limite de desconto
+  precoPraticado?: number;
   total: number;
   precoUnit: number;
   custo: number;
@@ -428,8 +430,14 @@ export function calcularLinha(
   const totalSugerido = qtdFaturada * (vendaArtigoUn + vendaAplPeca) + vendaSetup + portes;
   const precoUnitSugerido = qtdFaturada > 0 ? totalSugerido / qtdFaturada : 0;
 
-  // Preço à mão: para cima sem limite; para baixo, no máximo o desconto comercial
-  const manual = linha.precoUnitManual;
+  // Preço à mão (ou desconto em % sobre o sugerido): para cima sem limite;
+  // para baixo, no máximo o desconto comercial
+  const manual =
+    linha.precoUnitManual != null && linha.precoUnitManual > 0
+      ? linha.precoUnitManual
+      : linha.descontoPct && linha.descontoPct > 0
+        ? Math.round(precoUnitSugerido * (1 - linha.descontoPct) * 100) / 100
+        : undefined;
   const piso = precoUnitSugerido * (1 - (params.descontoMaximo ?? 0.05));
   const descontoLimitado = manual != null && manual > 0 && manual < piso - 0.005;
   if (descontoLimitado) {
@@ -457,6 +465,7 @@ export function calcularLinha(
     portes,
     totalSugerido,
     precoUnitSugerido,
+    precoPraticado: manual,
     total,
     precoUnit: qtdFaturada > 0 ? total / qtdFaturada : 0,
     custo,
@@ -669,7 +678,8 @@ export function precosPorQuantidade(
     .filter((q) => q > 0)
     .map((q) => {
       const l = sugeridoCom(q);
-      const precoUnit = fator === 1 ? l.precoUnitSugerido : Math.round(l.precoUnitSugerido * fator * 100) / 100;
+      // Com desconto em %, a simulação já o aplica a cada quantidade
+      const precoUnit = fator === 1 ? l.precoUnit : Math.round(l.precoUnitSugerido * fator * 100) / 100;
       return { quantidade: l.qtdFaturada, precoUnit, total: precoUnit * l.qtdFaturada };
     });
 }

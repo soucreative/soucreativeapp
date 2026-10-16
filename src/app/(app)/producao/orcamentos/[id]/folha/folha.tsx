@@ -58,7 +58,7 @@ export default function FolhaObra() {
     const total = totalLinha(l);
     const precoUnit = l.qtdFaturada > 0 ? total / l.qtdFaturada : 0;
     const tabela = (sugeridos?.[l.linha.id] ?? l.totalSugerido) * fator;
-    const desconto = l.linha.precoUnitManual && tabela - total >= 0.005 ? 1 - total / tabela : 0;
+    const desconto = (l.linha.precoUnitManual || l.linha.descontoPct) && tabela - total >= 0.005 ? 1 - total / tabela : 0;
     const codigo = (id?: string) => (id?.startsWith("toc:") ? id.slice(4) : id ? "provisório" : "—");
     const modelo = l.linha.modeloId ? modelos.find((m) => m.id === l.linha.modeloId) : undefined;
     const grelha = (l.linha.grelha ?? []).filter((g) => g.quantidade > 0);

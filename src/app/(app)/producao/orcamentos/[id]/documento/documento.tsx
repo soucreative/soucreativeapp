@@ -43,7 +43,7 @@ export default function Documento() {
   const sugeridos = o.estado !== "rascunho" ? o.congelado?.sugeridos : undefined;
   const totalTabela = (l: (typeof r.linhas)[number]) => {
     const tabela = (sugeridos?.[l.linha.id] ?? l.totalSugerido) * fator;
-    return l.linha.precoUnitManual && tabela - totalLinha(l) >= 0.005 ? tabela : totalLinha(l);
+    return (l.linha.precoUnitManual || l.linha.descontoPct) && tabela - totalLinha(l) >= 0.005 ? tabela : totalLinha(l);
   };
   const precoTabela = (l: (typeof r.linhas)[number]) =>
     totalTabela(l) > totalLinha(l) && l.qtdFaturada > 0 ? totalTabela(l) / l.qtdFaturada : undefined;

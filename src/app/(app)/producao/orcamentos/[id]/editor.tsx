@@ -666,8 +666,37 @@ function EditorLinha({
               .join(" · ")}
           />
           <Dado nome="Preço sugerido/un" valor={euros(r.precoUnitSugerido)} />
-          <Rotulado rotulo="Preço praticado/un" ajuda={l.precoUnitManual ? `${percent(l.precoUnitManual / r.precoUnitSugerido - 1)} vs sugerido · mín. ${euros(r.precoUnitSugerido * (1 - (dadosLinha.parametros.descontoMaximo ?? 0.05)))}` : "vazio = sugerido"}>
-            <CampoNumero valor={l.precoUnitManual} aoMudar={(n) => set({ precoUnitManual: n })} sufixo="€" min={0} vazio />
+          <Rotulado
+            rotulo="Preço praticado"
+            ajuda={
+              r.precoPraticado
+                ? `${percent(r.precoPraticado / r.precoUnitSugerido - 1)} vs sugerido · mín. ${euros(r.precoUnitSugerido * (1 - (dadosLinha.parametros.descontoMaximo ?? 0.05)))}`
+                : "€/un ou % de desconto; vazio = sugerido"
+            }
+          >
+            <div className="grid grid-cols-[1fr_5.5rem] gap-1">
+              <CampoNumero
+                valor={l.precoUnitManual}
+                aoMudar={(n) => set({ precoUnitManual: n, descontoPct: undefined })}
+                sufixo="€"
+                min={0}
+                vazio
+                placeholder={l.descontoPct && r.precoPraticado ? String(r.precoPraticado).replace(".", ",") : undefined}
+              />
+              <CampoNumero
+                valor={l.descontoPct}
+                aoMudar={(n) => set({ descontoPct: n, precoUnitManual: undefined })}
+                sufixo="%"
+                percentagem
+                min={0}
+                vazio
+                placeholder={
+                  l.precoUnitManual && r.precoUnitSugerido > 0 && l.precoUnitManual < r.precoUnitSugerido
+                    ? String(Math.round((1 - l.precoUnitManual / r.precoUnitSugerido) * 1000) / 10).replace(".", ",")
+                    : undefined
+                }
+              />
+            </div>
           </Rotulado>
           <Dado nome="Total da linha" valor={euros(r.total)} />
           <Dado nome="Margem" valor={percent(r.margem)} alerta={r.margem < 0} detalhe={`custo ${euros(r.custo)}`} />
@@ -783,7 +812,7 @@ function QuantidadesAlternativas({ valor, aoMudar }: { valor?: number[]; aoMudar
  * arriscada entre essa e zero, prejuízo abaixo do custo.
  */
 function AlertaDesconto({ r, margemSegura, descontoMaximo }: { r: ResultadoLinha; margemSegura: number; descontoMaximo: number }) {
-  const manual = r.linha.precoUnitManual;
+  const manual = r.precoPraticado;
   const desconto = r.totalSugerido - r.total;
   if (!manual || desconto < 0.005 || r.totalSugerido <= 0) return null;
   const limitado = manual < r.precoUnit - 0.005;

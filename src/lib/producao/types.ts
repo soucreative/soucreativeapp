@@ -248,6 +248,9 @@ export interface LinhaOrcamento {
   artigoDoCliente: boolean; // o cliente traz a peça
   aplicacoes: Aplicacao[];
   precoUnitManual?: number;
+  // Em alternativa ao preço à mão: desconto sobre o sugerido (0,05 = 5%).
+  // Fica em percentagem, para acompanhar o sugerido se a quantidade mudar.
+  descontoPct?: number;
   // Linhas com o mesmo lote são o mesmo trabalho em variantes (cores, tamanhos):
   // somam as quantidades para o escalão e pagam o setup uma vez.
   lote?: string;
