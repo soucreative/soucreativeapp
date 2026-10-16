@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { CampoNumero, Titulo } from "@/app/(app)/producao/_components/campos";
 import { EstadoGravacao } from "@/app/(app)/producao/_components/estado-gravacao";
+import { ImagemArtigo } from "@/app/(app)/producao/_components/imagem-artigo";
 import { apagarArtigo, guardarArtigo, novoId, sincronizarArtigos, useDados } from "@/app/(app)/producao/_lib/store";
 import { familiasToc } from "@/app/(app)/producao/actions";
 import { dataPt } from "@/lib/producao/format";
@@ -86,6 +87,7 @@ export default function ListaArtigos() {
         <table className="tabela">
           <thead>
             <tr>
+              <th className="w-14">Imagem</th>
               <th className="w-36">Família</th>
               <th>Artigo</th>
               <th className="w-44">Fornecedor</th>
@@ -100,6 +102,9 @@ export default function ListaArtigos() {
               const doToc = a.id.startsWith("toc:");
               return (
                 <tr key={a.id}>
+                  <td>
+                    <ImagemArtigo artigo={a} editavel />
+                  </td>
                   <td>
                     <input className="campo" value={a.categoria} disabled={doToc} onChange={(e) => set(a, { categoria: e.target.value })} />
                   </td>

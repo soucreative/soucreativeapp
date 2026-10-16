@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { euros } from "@/lib/producao/format";
+import { ImagemArtigo } from "@/app/(app)/producao/_components/imagem-artigo";
 import type { Artigo } from "@/lib/producao/types";
 
 const MAX_RESULTADOS = 30;
@@ -87,6 +88,7 @@ export function SeletorArtigo({
                   className={`flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-papel ${a.id === escolhido?.id ? "bg-verde-claro" : ""}`}
                   onClick={() => escolher(a.id)}
                 >
+                  <ImagemArtigo artigo={a} tamanho={28} />
                   <span className="flex-1">
                     <span className="text-xs text-cinza">{a.categoria} · </span>
                     {a.nome}

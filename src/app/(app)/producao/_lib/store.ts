@@ -167,8 +167,62 @@ export async function sincronizarArtigos(familias: string[], apagarOutros = fals
   }
   erro = null;
   const d = ler();
-  mudar({ ...d, artigos: r.valor.artigos, parametros: { ...d.parametros, ...r.valor.parametros, pessoas: d.parametros.pessoas } });
+  const imagens = new Map(d.artigos.filter((a) => a.imagem).map((a) => [a.id, a.imagem]));
+  mudar({
+    ...d,
+    artigos: r.valor.artigos.map((a) => (imagens.has(a.id) ? { ...a, imagem: imagens.get(a.id) } : a)),
+    parametros: { ...d.parametros, ...r.valor.parametros, pessoas: d.parametros.pessoas },
+  });
   return r.valor;
+}
+
+/** Reduz a imagem no browser (lado maior até 800 px, JPEG) para poupar espaço e tempo. */
+async function reduzirImagem(ficheiro: File, maximo = 800): Promise<Blob> {
+  const bitmap = await createImageBitmap(ficheiro);
+  const escala = Math.min(1, maximo / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(bitmap.width * escala);
+  canvas.height = Math.round(bitmap.height * escala);
+  const ctx = canvas.getContext("2d")!;
+  // Fundo branco: PNG com transparência não fica preto em JPEG
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  return new Promise((ok, falhou) =>
+    canvas.toBlob((b) => (b ? ok(b) : falhou(new Error("Não foi possível ler a imagem."))), "image/jpeg", 0.85),
+  );
+}
+
+export async function carregarImagem(id: string, ficheiro: File): Promise<boolean> {
+  try {
+    const fd = new FormData();
+    fd.append("id", id);
+    fd.append("imagem", await reduzirImagem(ficheiro), "imagem.jpg");
+    const r = await acoes.carregarImagemArtigo(fd);
+    if (!r.ok) {
+      erro = r.erro;
+      avisar();
+      return false;
+    }
+    const d = ler();
+    mudar({ ...d, artigos: d.artigos.map((a) => (a.id === id ? { ...a, imagem: r.valor } : a)) });
+    return true;
+  } catch (e) {
+    erro = e instanceof Error ? e.message : "Erro ao carregar a imagem.";
+    avisar();
+    return false;
+  }
+}
+
+export async function retirarImagem(id: string) {
+  const r = await acoes.apagarImagemArtigo(id);
+  if (!r.ok) {
+    erro = r.erro;
+    avisar();
+    return;
+  }
+  const d = ler();
+  mudar({ ...d, artigos: d.artigos.map((a) => (a.id === id ? { ...a, imagem: undefined } : a)) });
 }
 
 export function apagarArtigo(id: string) {

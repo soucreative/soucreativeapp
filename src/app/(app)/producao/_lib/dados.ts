@@ -99,6 +99,37 @@ async function custosDoRegisto(): Promise<Record<Pessoa['id'], RegistoPessoas>> 
   return registo
 }
 
+/**
+ * Nome do ficheiro da imagem de um artigo no armazenamento "artigos". O id
+ * tem ":" (toc:per0001) e o armazenamento não lida bem com "%": usa-se base64url,
+ * que só tem letras, números, - e _, e se converte de volta no id.
+ */
+export function ficheiroImagem(artigoId: string): string {
+  return `${Buffer.from(artigoId).toString('base64url')}.jpg`
+}
+
+function idDoFicheiro(nome: string): string {
+  return Buffer.from(nome.slice(0, -4), 'base64url').toString()
+}
+
+/** Imagens que existem, por id de artigo, com a data da última alteração (para o browser não mostrar uma antiga). */
+async function imagensDosArtigos(): Promise<Map<string, string>> {
+  const admin = createAdminClient()
+  const mapa = new Map<string, string>()
+  for (let inicio = 0; ; inicio += 1000) {
+    const { data, error } = await admin.storage.from('artigos').list('', { limit: 1000, offset: inicio })
+    if (error || !data?.length) break
+    for (const f of data) {
+      if (!f.name.endsWith('.jpg')) continue
+      const id = idDoFicheiro(f.name)
+      const url = admin.storage.from('artigos').getPublicUrl(f.name).data.publicUrl
+      mapa.set(id, `${url}?v=${encodeURIComponent(f.updated_at ?? '')}`)
+    }
+    if (data.length < 1000) break
+  }
+  return mapa
+}
+
 /** Parâmetros gravados, completados com os de partida e com o custo dos colaboradores registados. */
 export async function carregarParametros(): Promise<Parametros> {
   const [{ data }, registo] = await Promise.all([
@@ -111,18 +142,20 @@ export async function carregarParametros(): Promise<Parametros> {
 
 export async function carregarDadosProducao(): Promise<DadosProducao> {
   const admin = createAdminClient()
-  const [parametros, artigosRes, clientesRes, orcRes, equipaRes] = await Promise.all([
+  const [parametros, artigosRes, clientesRes, orcRes, equipaRes, imagens] = await Promise.all([
     carregarParametros(),
     admin.from('prod_artigos').select('*').order('categoria').order('nome'),
     admin.from('prod_clientes').select('*').order('nome'),
     admin.from('prod_orcamentos').select('conteudo').order('created_at', { ascending: false }),
     admin.from('employees').select('id, first_name, last_name, department').eq('status', 'active').order('first_name'),
+    imagensDosArtigos(),
   ])
 
   // Catálogo vazio (primeira utilização): mostra os artigos do v27 até alguém gravar.
-  const artigos = artigosRes.data?.length
+  const artigos = (artigosRes.data?.length
     ? (artigosRes.data as LinhaArtigo[]).map(artigoDeLinha)
     : structuredClone(ARTIGOS_INICIAIS)
+  ).map(a => (imagens.has(a.id) ? { ...a, imagem: imagens.get(a.id) } : a))
 
   return {
     parametros,

@@ -39,6 +39,7 @@ export default function Documento() {
   // Linhas que entram na tabela: as normais e, depois de ganho, a opção escolhida
   const linhasTabela = r.linhas.filter((l) => l.incluida);
   const gruposAbertos = r.grupos.filter((g) => !g.escolhida);
+  const imagemDe = (l: (typeof r.linhas)[number]) => dados.artigos.find((a) => a.id === l.linha.artigoId)?.imagem;
   const validade = new Date(o.data);
   validade.setDate(validade.getDate() + p.validadeDias);
 
@@ -98,7 +99,7 @@ export default function Documento() {
             </thead>
             <tbody>
               {linhasTabela.map((l) => (
-                <LinhaDoc key={l.linha.id} l={l} precoUnit={precoUnit(l)} total={totalLinha(l)} />
+                <LinhaDoc key={l.linha.id} l={l} precoUnit={precoUnit(l)} total={totalLinha(l)} imagem={imagemDe(l)} />
               ))}
               {r.vendaCriacao > 0 && (
                 <tr className="border-b border-linha">
@@ -141,6 +142,7 @@ export default function Documento() {
                         precoUnit={precoUnit(l)}
                         total={totalLinha(l)}
                         totalOrcamento={linhasTabela.length > 0 ? op.totalComBase * fator : undefined}
+                        imagem={imagemDe(l)}
                       />
                     );
                   })}
@@ -218,16 +220,24 @@ function LinhaDoc({
   precoUnit,
   total,
   totalOrcamento,
+  imagem,
 }: {
   l: ResultadoLinha;
   rotulo?: string;
   precoUnit: number;
   total: number;
   totalOrcamento?: number;
+  imagem?: string;
 }) {
   return (
     <tr className="break-inside-avoid border-b border-linha">
       <td className="py-3 pr-2">
+        <div className="flex gap-3">
+        {imagem && (
+          // eslint-disable-next-line @next/next/no-img-element -- imagens do Supabase, já reduzidas
+          <img src={imagem} alt="" className="h-16 w-16 shrink-0 rounded object-cover" />
+        )}
+        <div>
         {rotulo && <div className="text-xs font-medium uppercase tracking-wider text-mostarda">{rotulo}</div>}
         <div className="font-medium">{l.linha.descricao || "Artigo"}</div>
         {l.linha.artigoDoCliente && <div className="text-xs text-cinza">Peça fornecida pelo cliente</div>}
@@ -236,6 +246,8 @@ function LinhaDoc({
             {descreverAplicacao(a.aplicacao)}
           </div>
         ))}
+        </div>
+        </div>
       </td>
       <td className="py-3 px-2 text-right tabular-nums">{numero(l.qtdFaturada)}</td>
       <td className="py-3 px-2 text-right tabular-nums">{euros(precoUnit)}</td>

@@ -178,6 +178,8 @@ export interface Artigo {
   minimo: number;
   portes: number;
   nota?: string;
+  // URL pública da imagem (armazenamento "artigos"); vem do servidor, não se edita
+  imagem?: string;
 }
 
 export interface Cliente {

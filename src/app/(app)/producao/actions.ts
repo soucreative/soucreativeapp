@@ -5,7 +5,7 @@ import { getSessionWithRole } from '@/lib/auth'
 import { calcularOrcamento, totalParaListas } from '@/lib/producao/engine'
 import { PARAMETROS_INICIAIS } from '@/lib/producao/defaults'
 import type { Artigo, Cliente, Orcamento, Parametros } from '@/lib/producao/types'
-import { artigoDeLinha, carregarParametros } from './_lib/dados'
+import { artigoDeLinha, carregarParametros, ficheiroImagem } from './_lib/dados'
 
 /** A equipa de produção usa a calculadora; os parâmetros de custo são da gestão. */
 const PRODUCAO = ['management', 'director', 'employee'] as const
@@ -306,4 +306,27 @@ export async function sincronizarArtigosToc(
   } catch (e) {
     return falha(e instanceof Error ? e.message : 'Erro ao sincronizar com o TOC.')
   }
+}
+
+// ── Imagens dos artigos ───────────────────────────────────────────────────
+
+/** Recebe a imagem já reduzida no browser (JPEG) e guarda-a com o id do artigo. */
+export async function carregarImagemArtigo(formData: FormData): Promise<Resultado<string>> {
+  if (!(await getSessionWithRole(PRODUCAO))) return falha('Sem permissão.')
+  const id = formData.get('id') as string
+  const ficheiro = formData.get('imagem')
+  if (!id || !(ficheiro instanceof Blob)) return falha('Falta a imagem.')
+  if (ficheiro.size > 3 * 1024 * 1024) return falha('A imagem tem mais de 3 MB.')
+  const admin = createAdminClient()
+  const nome = ficheiroImagem(id)
+  const { error } = await admin.storage.from('artigos').upload(nome, ficheiro, { upsert: true, contentType: 'image/jpeg' })
+  if (error) return falha(error.message)
+  const url = admin.storage.from('artigos').getPublicUrl(nome).data.publicUrl
+  return { ok: true, valor: `${url}?v=${Date.now()}` }
+}
+
+export async function apagarImagemArtigo(id: string): Promise<Resultado> {
+  if (!(await getSessionWithRole(PRODUCAO))) return falha('Sem permissão.')
+  const { error } = await createAdminClient().storage.from('artigos').remove([ficheiroImagem(id)])
+  return error ? falha(error.message) : { ok: true, valor: null }
 }

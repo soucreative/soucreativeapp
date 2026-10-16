@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { AplicacaoEditor, novaAplicacao } from "@/app/(app)/producao/_components/aplicacao-editor";
 import { EstadoGravacao } from "@/app/(app)/producao/_components/estado-gravacao";
 import { SeletorArtigo } from "@/app/(app)/producao/_components/seletor-artigo";
+import { ImagemArtigo } from "@/app/(app)/producao/_components/imagem-artigo";
 import { Avisos, CampoNumero, EtiquetaEstimativa, Interruptor, Rotulado } from "@/app/(app)/producao/_components/campos";
 import { calcularOrcamento, type ResultadoLinha } from "@/lib/producao/engine";
 import { ESTADOS, MOTIVOS_PERDA } from "@/lib/producao/estados";
@@ -464,11 +465,16 @@ function EditorLinha({
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
         <div className="lg:col-span-3">
           <Rotulado rotulo="Artigo do catálogo">
+            <div className="flex items-center gap-2">
+            {l.artigoId && <ImagemArtigo artigo={artigos.find((a) => a.id === l.artigoId)} tamanho={36} editavel />}
+            <div className="flex-1">
             <SeletorArtigo
               artigos={artigos}
               escolhido={artigos.find((a) => a.id === l.artigoId)}
               aoEscolher={(id) => escolherArtigo(id ?? "")}
             />
+            </div>
+            </div>
           </Rotulado>
         </div>
         <div className="lg:col-span-3">
