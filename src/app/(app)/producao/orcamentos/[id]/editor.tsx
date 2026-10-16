@@ -208,9 +208,17 @@ function Editor({ o }: { o: Orcamento }) {
                 <input className="campo" value={o.descontoMotivo ?? ""} onChange={(e) => set({ descontoMotivo: e.target.value })} />
               </Rotulado>
             </div>
-            <Rotulado rotulo="Notas (saem no documento)">
-              <textarea className="campo mt-1 min-h-20" value={o.notas ?? ""} onChange={(e) => set({ notas: e.target.value })} />
-            </Rotulado>
+          </section>
+
+          <section className="cartao">
+            <h2 className="titulo mb-1 text-lg text-verde">Observações</h2>
+            <p className="mb-3 text-xs text-cinza">Saem no documento para o cliente, logo a seguir aos preços e antes dos termos e condições.</p>
+            <textarea
+              className="campo min-h-28"
+              value={o.notas ?? ""}
+              placeholder="ex.: Prazo de produção de 10 dias úteis após aprovação da maquete. Bonés com regulação em velcro."
+              onChange={(e) => set({ notas: e.target.value })}
+            />
           </section>
         </fieldset>
 
