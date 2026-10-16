@@ -122,13 +122,15 @@ export const PARAMETROS_INICIAIS: Parametros = {
     },
   ],
   consumiveis: [
-    { id: "gtx_cmyk", nome: "Tinta GTX CMYK", unidade: "ml", preco: 0.17, maquinaId: "gtx", estimativa: true },
-    { id: "gtx_branco", nome: "Tinta GTX branco", unidade: "ml", preco: 0.22, maquinaId: "gtx", estimativa: true },
-    { id: "dtg_pretrat", nome: "Líquido de pré-tratamento", unidade: "ml", preco: 0.012, maquinaId: "gtx", estimativa: true },
+    // GTX e sublimação: folhas de custos da SOU (out 2026)
+    { id: "gtx_cmyk", nome: "Tinta GTX CMYK", unidade: "ml", preco: 0.322, maquinaId: "gtx", estimativa: false, nota: "225,40 € por 0,7 L" },
+    { id: "gtx_branco", nome: "Tinta GTX branco", unidade: "ml", preco: 0.2654, maquinaId: "gtx", estimativa: false, nota: "371,50 € por 1,4 L" },
+    { id: "dtg_pretrat", nome: "Líquido de pré-tratamento", unidade: "ml", preco: 0.016, maquinaId: "gtx", estimativa: false, nota: "16 € por litro" },
+    { id: "gtx_manutencao", nome: "Kit de manutenção GTX", unidade: "un", preco: 0.0132, maquinaId: "gtx", estimativa: false, nota: "330 € a cada 25 000 impressões" },
     { id: "dtf_filme", nome: "Filme DTF", unidade: "cm²", preco: 0.0004, maquinaId: "gtx", estimativa: true },
     { id: "dtf_po", nome: "Pó adesivo DTF", unidade: "g", preco: 0.015, maquinaId: "gtx", estimativa: true },
-    { id: "sub_tinta", nome: "Tinta Sawgrass", unidade: "ml", preco: 1.6, maquinaId: "sawgrass", estimativa: true },
-    { id: "sub_papel", nome: "Papel de sublimação", unidade: "cm²", preco: 0.00012, maquinaId: "sawgrass", estimativa: true },
+    { id: "sub_tinta", nome: "Tinta Sawgrass", unidade: "ml", preco: 1.6129, maquinaId: "sawgrass", estimativa: false, nota: "50 € por tinteiro de 31 ml" },
+    { id: "sub_papel", nome: "Papel de sublimação", unidade: "cm²", preco: 0.000218, maquinaId: "sawgrass", estimativa: false, nota: "13,60 € por 100 folhas A4" },
     { id: "sub_fita", nome: "Fita térmica", unidade: "un", preco: 0.02, maquinaId: "sawgrass", estimativa: true },
     { id: "bord_linha", nome: "Linha de bordar (agulha + bobina)", unidade: "m", preco: 0.0014, maquinaId: "melco", estimativa: true },
     { id: "bord_entretela", nome: "Entretela", unidade: "cm²", preco: 0.0004, maquinaId: "melco", estimativa: true },
@@ -185,8 +187,8 @@ export const PARAMETROS_INICIAIS: Parametros = {
       minimoPorPeca: 2,
       areaMaxCm: [29.7, 42],
       k: {
-        tintaMlCm2: 0.0012,
-        papelFator: 1.2,
+        tintaMlCm2: 0.00025, // 0,157 ml num A4 (folha de custos da SOU)
+        papelFator: 1, // o papel gasta-se à folha: A5 = meia folha A4
         impressaoMinA4: 1,
         prensaMinTexteis: 1,
         prensaMinCaneca: 3.5,

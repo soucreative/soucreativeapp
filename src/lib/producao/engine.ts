@@ -193,6 +193,7 @@ export function calcularPeca(params: Parametros, a: Aplicacao, emParalelo = 1): 
     case "dtg": {
       const escura = !!a.pecaEscura;
       consumos.gtx_cmyk = area * cob * k.cmykMlCm2;
+      consumos.gtx_manutencao = 1; // kit de manutenção, por impressão
       if (escura) {
         consumos.gtx_branco = area * cob * k.brancoMlCm2;
         consumos.dtg_pretrat = area * k.pretratMlCm2;
@@ -207,6 +208,7 @@ export function calcularPeca(params: Parametros, a: Aplicacao, emParalelo = 1): 
       consumos.gtx_branco = area * cob * k.brancoMlCm2;
       consumos.dtf_filme = area * k.filmeFator;
       consumos.dtf_po = area * cob * k.poGCm2;
+      consumos.gtx_manutencao = 1;
       maquinaMin = (area / A4_CM2) * k.impressaoMinA4 + k.curaMin + k.prensaMin;
       operadorMin += k.prensaMin;
       break;
