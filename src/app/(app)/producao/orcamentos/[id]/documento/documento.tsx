@@ -229,6 +229,29 @@ export default function Documento() {
             <p className="whitespace-pre-line text-sm">{o.notas}</p>
           </section>
         )}
+        {e.dadosPagamento && (
+          <section className="mt-8 break-inside-avoid rounded-md border border-linha bg-papel/60 px-4 py-3">
+            <h2 className="mb-1.5 text-xs uppercase tracking-[0.2em] text-mostarda">Dados para pagamento</h2>
+            <div className="space-y-0.5 text-sm">
+              {e.dadosPagamento
+                .split("\n")
+                .filter((t) => t.trim())
+                .map((t, i) => {
+                  const dois = t.indexOf(":");
+                  return dois > 0 && dois < 40 ? (
+                    <p key={i}>
+                      <span className="text-cinza">{t.slice(0, dois + 1)}</span>
+                      <span className={/^IBAN|BIC/i.test(t) ? "font-medium tabular-nums" : ""}>{t.slice(dois + 1)}</span>
+                    </p>
+                  ) : (
+                    <p key={i} className={i === 0 ? "font-medium" : ""}>
+                      {t}
+                    </p>
+                  );
+                })}
+            </div>
+          </section>
+        )}
         {(e.condicoes || (pecasDoCliente && e.condicoesPecasCliente)) && (
           <section className="mt-8 break-inside-avoid print:mt-0 print:break-before-page">
             <h2 className="mb-2 text-xs uppercase tracking-[0.2em] text-mostarda">Termos e condições</h2>

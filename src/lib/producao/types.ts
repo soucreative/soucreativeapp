@@ -140,6 +140,7 @@ export interface DadosEmpresa {
   telefone: string;
   site: string;
   rodape?: string; // entidade legal, no rodapé do orçamento
+  dadosPagamento?: string; // sai antes dos termos e condições
   condicoes: string; // texto que sai no fim de cada orçamento
   // Só sai nos orçamentos com algum artigo fornecido pelo cliente
   condicoesPecasCliente?: string;
