@@ -62,6 +62,19 @@ Parte do `SOU_Calculadora_v27.xlsx` e corrige o que nele não batia certo.
 
 ## 🔵 EM CURSO
 
+### Artigos do TOC: simplificar nomes e variantes
+A app junta as cores e os tamanhos do mesmo artigo num modelo, a partir do código e do nome do TOC (325 dos 574 artigos em 57 modelos). Onde os nomes estão escritos de formas diferentes, o agrupamento baralha-se: **Fruit of the Loom** (a cor sai como "T-shirt branca", "Tshirt preta 190g"), **Gildan 2000** ("Branca" e "Branco" como cores diferentes), **T-shirt vermelha** e **T-shirt 11380** (parte do nome do modelo, "Tsra150" e "Regent", sai como cor). Hoje corrige-se à mão em Artigos → Modelos com variantes.
+
+**Ver como simplificar:**
+- [ ] Combinar uma regra única para criar artigos no TOC: código  e nome  (ex.:  · "T-shirt K380 mulher, branca, tamanho M"). Com a regra cumprida, a app agrupa sem correções
+- [ ] Rever no TOC os nomes dos modelos baralhados acima, em vez de os corrigir na app
+- [ ] Ver se o TOC Online permite artigos com variantes (um artigo, várias cores/tamanhos) ou se fica um código por variante
+
+**Ver como gerir:**
+- [ ] Definir quem cria os artigos no TOC e seguir a regra (uma lista de verificação curta)
+- [ ] Depois de cada sincronização, a app assinala os artigos novos que não entraram em nenhum modelo ou ficaram sem cor/tamanho, para rever logo
+- [ ] Decidir se as correções feitas na app voltam ao TOC (corrigir lá o nome) ou se ficam só na app
+
 ### Documento do orçamento e templates
 O documento que vai para o cliente já sai da app, com a marca SOU. Falta adaptá-lo ao modelo que a SOU usa hoje.
 
