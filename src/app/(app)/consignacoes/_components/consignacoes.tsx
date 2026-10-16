@@ -23,6 +23,8 @@ import {
   marcarPago,
   registarMovimento,
 } from '../actions'
+import { contarInventario } from '../toc'
+import ImportarToc from './importar-toc'
 
 type Aba = 'resumo' | 'produtos' | 'movimentos' | 'pagamentos' | 'criadores'
 const hoje = () => new Date().toISOString().slice(0, 10)
@@ -68,7 +70,12 @@ export default function Consignacoes({
         ))}
       </div>
 
-      {aba === 'resumo' && <Resumo resumos={resumosC} />}
+      {aba === 'resumo' && (
+        <>
+          <ImportarToc />
+          <Resumo resumos={resumosC} />
+        </>
+      )}
       {aba === 'produtos' && <Produtos criadores={criadores} resumos={resumosP} nomeCriador={nomeCriador} />}
       {aba === 'movimentos' && <Movimentos criadores={criadores} produtos={produtos} resumos={resumosP} movimentos={movimentos} nomeCriador={nomeCriador} />}
       {aba === 'pagamentos' && <Pagamentos liquidacoes={liquidacoes} nomeCriador={nomeCriador} resumos={resumosC} />}
@@ -148,8 +155,10 @@ function Produtos({
   nomeCriador: (id: string) => string
 }) {
   const [filtro, setFiltro] = useState('')
+  const [soSemPreco, setSoSemPreco] = useState(false)
   const [emEdicao, setEmEdicao] = useState<ProdutoConsignacao | 'novo' | null>(null)
-  const lista = resumos.filter((r) => !filtro || r.produto.criador_id === filtro)
+  const semPreco = resumos.filter((r) => !(r.produto.preco_criador > 0)).length
+  const lista = resumos.filter((r) => (!filtro || r.produto.criador_id === filtro) && (!soSemPreco || !(r.produto.preco_criador > 0)))
 
   return (
     <>
@@ -162,6 +171,12 @@ function Produtos({
             </option>
           ))}
         </select>
+        {semPreco > 0 && (
+          <label className="flex items-center gap-2 text-sm text-alerta">
+            <input type="checkbox" className="h-4 w-4" checked={soSemPreco} onChange={(e) => setSoSemPreco(e.target.checked)} />
+            Só os {semPreco} sem preço do criador
+          </label>
+        )}
         <button className="botao-principal ml-auto" disabled={!criadores.length} onClick={() => setEmEdicao('novo')}>
           + Novo produto
         </button>
@@ -203,7 +218,9 @@ function Produtos({
                     {p.referencia && <div className="text-[11px] text-cinza">{p.referencia}</div>}
                   </td>
                   <td>{nomeCriador(p.criador_id)}</td>
-                  <td className="num">{euros(p.preco_criador)}</td>
+                  <td className={`num ${p.preco_criador > 0 ? '' : 'font-medium text-alerta'}`} title={p.preco_criador > 0 ? undefined : 'Falta o preço do criador'}>
+                    {p.preco_criador > 0 ? euros(p.preco_criador) : 'em falta'}
+                  </td>
                   <td className="num">{euros(p.preco_venda)}</td>
                   <td className="num text-cinza">{euros(m.semIva)}</td>
                   <td className={`num ${m.euros < 0 ? 'text-alerta' : ''}`}>
@@ -212,7 +229,9 @@ function Produtos({
                   <td className="num">{r.entradas}</td>
                   <td className="num">{r.vendidas}</td>
                   <td className="num">{r.devolvidas}</td>
-                  <td className={`num font-medium ${r.emStock < 0 ? 'text-alerta' : ''}`}>{r.emStock}</td>
+                  <td className={`num font-medium ${r.emStock < 0 ? 'text-alerta' : ''}`} title={r.emStock < 0 ? 'Há mais vendas do que entradas: faça a contagem' : undefined}>
+                    <Contagem produtoId={p.id} stock={r.emStock} />
+                  </td>
                   <td className="text-right">
                     <button className="text-xs text-verde hover:underline" onClick={() => setEmEdicao(p)}>
                       editar
@@ -232,8 +251,9 @@ function Produtos({
         </table>
       </div>
       <p className="mt-3 text-xs text-cinza">
-        Margem = preço da loja sem IVA menos o preço do criador. Mudar um preço não altera as vendas já registadas: cada venda guarda os
-        preços do dia.
+        Margem = preço da loja sem IVA menos o preço do criador. As vendas registadas na app guardam os preços do dia; as importadas do TOC
+        usam o preço do criador do produto até entrarem num pagamento. Stock negativo: há vendas sem entradas registadas — clique no
+        número e escreva quantas peças há na loja.
       </p>
     </>
   )
@@ -472,7 +492,7 @@ function Movimentos({
                   <td className="num">{m.quantidade}</td>
                   <td className="num">{m.tipo === 'venda' ? euros(m.preco_venda ?? 0) : ''}</td>
                   <td className="num">
-                    {m.tipo === 'venda' ? euros(m.quantidade * (m.preco_criador ?? 0)) : ''}
+                    {m.tipo === 'venda' ? euros(m.quantidade * (m.preco_criador ?? p?.preco_criador ?? 0)) : ''}
                     {m.liquidacao_id && <div className="text-[11px] text-verde">num pagamento</div>}
                   </td>
                   <td className="text-xs text-cinza">{m.notas}</td>
@@ -769,5 +789,50 @@ function Indicador({ nome, valor, detalhe, alerta }: { nome: string; valor: stri
       <div className={`titulo mt-1 text-2xl ${alerta ? 'text-alerta' : 'text-verde'}`}>{valor}</div>
       {detalhe && <div className="text-xs text-cinza">{detalhe}</div>}
     </div>
+  )
+}
+
+/** Stock do produto; ao clicar, escreve-se quantas peças há na loja e a app acerta a diferença. */
+function Contagem({ produtoId, stock }: { produtoId: string; stock: number }) {
+  const [aContar, setAContar] = useState(false)
+  const [valor, setValor] = useState('')
+  const [erro, setErro] = useState<string | null>(null)
+  const [pendente, iniciar] = useTransition()
+  if (!aContar) {
+    return (
+      <button className="tabular-nums underline decoration-dotted underline-offset-2 hover:text-verde" title="Contagem na loja" onClick={() => setAContar(true)}>
+        {stock}
+      </button>
+    )
+  }
+  const gravar = () =>
+    iniciar(async () => {
+      const r = await contarInventario(produtoId, Number(valor), hoje())
+      if ('error' in r) setErro(r.error)
+      else {
+        setAContar(false)
+        setValor('')
+        setErro(null)
+      }
+    })
+  return (
+    <span className="inline-flex items-center gap-1">
+      <input
+        autoFocus
+        inputMode="numeric"
+        className="campo w-16 py-0.5 text-right"
+        placeholder="na loja"
+        value={valor}
+        onChange={(e) => setValor(e.target.value.replace(/[^0-9]/g, ''))}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && valor !== '') gravar()
+          if (e.key === 'Escape') setAContar(false)
+        }}
+      />
+      <button className="text-xs text-verde" disabled={pendente || valor === ''} onClick={gravar}>
+        OK
+      </button>
+      {erro && <span className="text-xs text-alerta">{erro}</span>}
+    </span>
   )
 }

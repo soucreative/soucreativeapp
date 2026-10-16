@@ -139,18 +139,28 @@ export async function criarLiquidacao(criadorId: string, ate: string): Promise<R
   if (!s) return { error: 'Sem permissão.' }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(ate)) return { error: 'Data inválida.' }
   const admin = createAdminClient()
-  const { data: produtos } = await admin.from('consig_produtos').select('id').eq('criador_id', criadorId)
+  const { data: produtos } = await admin.from('consig_produtos').select('id, nome, preco_criador').eq('criador_id', criadorId)
   const ids = (produtos ?? []).map((p) => p.id as string)
   if (!ids.length) return { error: 'Este criador não tem produtos.' }
-  const { data: vendas } = await admin
+  const { data: vendasBrutas } = await admin
     .from('consig_movimentos')
-    .select('id, quantidade, preco_criador')
+    .select('id, produto_id, quantidade, preco_criador')
     .eq('tipo', 'venda')
     .is('liquidacao_id', null)
     .lte('data', ate)
     .in('produto_id', ids)
-  if (!vendas?.length) return { error: 'Não há vendas por pagar até essa data.' }
-  const total = vendas.reduce((t, v) => t + Number(v.quantidade) * Number(v.preco_criador ?? 0), 0)
+  if (!vendasBrutas?.length) return { error: 'Não há vendas por pagar até essa data.' }
+  // Vendas importadas do TOC sem preço do criador usam o do produto; sem nenhum, não se paga às cegas
+  const precoDe = (v: { produto_id: string; preco_criador: number | null }) =>
+    v.preco_criador != null && Number(v.preco_criador) > 0
+      ? Number(v.preco_criador)
+      : Number(produtos!.find((p) => p.id === v.produto_id)?.preco_criador ?? 0)
+  const semPreco = [...new Set(vendasBrutas.filter((v) => !(precoDe(v) > 0)).map((v) => produtos!.find((p) => p.id === v.produto_id)?.nome))]
+  if (semPreco.length) {
+    return { error: `Falta o preço do criador em: ${semPreco.slice(0, 5).join(', ')}${semPreco.length > 5 ? ` e mais ${semPreco.length - 5}` : ''}. Preencha-o em Produtos.` }
+  }
+  const vendas = vendasBrutas.map((v) => ({ ...v, preco_criador: precoDe(v) }))
+  const total = vendas.reduce((t, v) => t + Number(v.quantidade) * v.preco_criador, 0)
 
   const { data: liq, error } = await admin
     .from('consig_liquidacoes')
@@ -158,8 +168,16 @@ export async function criarLiquidacao(criadorId: string, ate: string): Promise<R
     .select('id')
     .single()
   if (error || !liq) return { error: error?.message ?? 'Não foi possível criar o pagamento.' }
-  const { error: e2 } = await admin.from('consig_movimentos').update({ liquidacao_id: liq.id }).in('id', vendas.map((v) => v.id))
+  // Cada venda fica com o preço com que foi paga, para o extrato não mudar depois
+  const porPreco = new Map<number, string[]>()
+  for (const v of vendas) porPreco.set(v.preco_criador, [...(porPreco.get(v.preco_criador) ?? []), v.id as string])
+  let e2: { message: string } | null = null
+  for (const [preco, idsVenda] of porPreco) {
+    const { error } = await admin.from('consig_movimentos').update({ liquidacao_id: liq.id, preco_criador: preco }).in('id', idsVenda)
+    if (error) e2 = error
+  }
   if (e2) {
+    await admin.from('consig_movimentos').update({ liquidacao_id: null }).eq('liquidacao_id', liq.id)
     await admin.from('consig_liquidacoes').delete().eq('id', liq.id)
     return { error: e2.message }
   }

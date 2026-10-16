@@ -4,6 +4,8 @@ import type { Criador, Liquidacao, Movimento, ProdutoConsignacao } from '@/lib/c
 import Consignacoes from './_components/consignacoes'
 
 export const dynamic = 'force-dynamic'
+// A importação do TOC lê todas as faturas: pode levar mais de meio minuto
+export const maxDuration = 120
 
 const num = (v: unknown) => Number(v ?? 0)
 
