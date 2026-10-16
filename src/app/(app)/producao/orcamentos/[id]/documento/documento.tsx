@@ -206,9 +206,9 @@ export default function Documento() {
           </section>
         )}
 
-        <footer className="mt-12 border-t border-linha pt-3 text-center text-[8pt] tracking-[0.3em] text-cinza uppercase">
-          creative hands
-        </footer>
+        {e.rodape && (
+          <footer className="mt-12 border-t border-linha pt-3 text-center text-[8pt] text-cinza">{e.rodape}</footer>
+        )}
       </article>
     </>
   );

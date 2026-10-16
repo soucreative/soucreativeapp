@@ -138,6 +138,7 @@ export interface DadosEmpresa {
   email: string;
   telefone: string;
   site: string;
+  rodape?: string; // entidade legal, no rodapé do orçamento
   condicoes: string; // texto que sai no fim de cada orçamento
   // Só sai nos orçamentos com algum artigo fornecido pelo cliente
   condicoesPecasCliente?: string;
