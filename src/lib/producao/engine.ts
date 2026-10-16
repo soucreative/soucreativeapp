@@ -631,3 +631,37 @@ export function calcularOrcamento(params: Parametros, o: Orcamento): ResultadoOr
 export function totalParaListas(o: Orcamento, r: ResultadoOrcamento): number {
   return o.congelado && !o.congelado.linhas && o.estado !== "rascunho" ? o.congelado.total : r.totalReferencia;
 }
+
+/**
+ * Preço de uma linha noutras quantidades, para o cliente comparar (25 vs 50).
+ * Recalcula o orçamento com a quantidade trocada, para os escalões, os lotes e
+ * os mínimos contarem como contariam de verdade. É sempre ao preço de hoje.
+ * Se a linha tem preço à mão, o desconto por quantidade aplica-se a esse
+ * preço: 9,90 à mão sobre 10,50 sugeridos dá 9,90 × (sugerido a 50 / 10,50).
+ */
+export function precosPorQuantidade(
+  params: Parametros,
+  o: Orcamento,
+  linhaId: string,
+  quantidades: number[],
+): { quantidade: number; precoUnit: number; total: number }[] {
+  const sugeridoCom = (q?: number) => {
+    const simulado: Orcamento = {
+      ...o,
+      estado: "rascunho",
+      congelado: undefined,
+      linhas: o.linhas.map((l) => (l.id === linhaId ? { ...l, quantidade: q ?? l.quantidade, precoUnitManual: undefined } : l)),
+    };
+    return calcularOrcamento(params, simulado).linhas.find((x) => x.linha.id === linhaId)!;
+  };
+  const manual = o.linhas.find((l) => l.id === linhaId)?.precoUnitManual;
+  const base = manual != null && manual > 0 ? sugeridoCom().precoUnitSugerido : 0;
+  const fator = base > 0 ? manual! / base : 1;
+  return quantidades
+    .filter((q) => q > 0)
+    .map((q) => {
+      const l = sugeridoCom(q);
+      const precoUnit = fator === 1 ? l.precoUnitSugerido : Math.round(l.precoUnitSugerido * fator * 100) / 100;
+      return { quantidade: l.qtdFaturada, precoUnit, total: precoUnit * l.qtdFaturada };
+    });
+}

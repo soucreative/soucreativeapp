@@ -8,7 +8,7 @@ import { EstadoGravacao } from "@/app/(app)/producao/_components/estado-gravacao
 import { SeletorArtigo } from "@/app/(app)/producao/_components/seletor-artigo";
 import { ImagemArtigo } from "@/app/(app)/producao/_components/imagem-artigo";
 import { Avisos, CampoNumero, EtiquetaEstimativa, Interruptor, Rotulado } from "@/app/(app)/producao/_components/campos";
-import { calcularOrcamento, type ResultadoLinha } from "@/lib/producao/engine";
+import { calcularOrcamento, precosPorQuantidade, type ResultadoLinha } from "@/lib/producao/engine";
 import { ESTADOS, MOTIVOS_PERDA } from "@/lib/producao/estados";
 import { dataPt, euros, horasMin, numero, percent } from "@/lib/producao/format";
 import { etapaDe, ETAPAS } from "@/lib/producao/agenda";
@@ -430,6 +430,12 @@ function EditorLinha({
   aoRemover: () => void;
 }) {
   const set = (p: Partial<LinhaOrcamento>) => aoMudar((cur) => ({ ...cur, ...p }));
+  const dadosLinha = useDados();
+  const orcamento = dadosLinha.orcamentos.find((x) => x.linhas.some((y) => y.id === l.id));
+  const alternativas =
+    orcamento && l.quantidadesAlternativas?.length
+      ? precosPorQuantidade(dadosLinha.parametros, orcamento, l.id, l.quantidadesAlternativas)
+      : [];
   const mudarAplicacoes = (fn: (as: Aplicacao[]) => Aplicacao[]) => aoMudar((cur) => ({ ...cur, aplicacoes: fn(cur.aplicacoes) }));
 
   const escolherArtigo = (id: string) => {
@@ -520,6 +526,9 @@ function EditorLinha({
             </Rotulado>
           </div>
         )}
+        <Rotulado rotulo="Mostrar também para" ajuda="Outras quantidades, separadas por vírgula (ex.: 50, 100)">
+          <QuantidadesAlternativas valor={l.quantidadesAlternativas} aoMudar={(q) => set({ quantidadesAlternativas: q })} />
+        </Rotulado>
         <Rotulado rotulo="Peças já encomendadas" ajuda="De encomendas anteriores; contam para o escalão">
           <CampoNumero valor={l.pecasAnteriores} vazio min={0} aoMudar={(n) => set({ pecasAnteriores: n ? Math.round(n) : undefined })} />
         </Rotulado>
@@ -562,9 +571,37 @@ function EditorLinha({
           </Rotulado>
           <Dado nome="Total da linha" valor={euros(r.total)} />
           <Dado nome="Margem" valor={percent(r.margem)} alerta={r.margem < 0} detalhe={`custo ${euros(r.custo)}`} />
+          {alternativas.length > 0 && (
+            <div className="sm:col-span-2 lg:col-span-5 rounded-md bg-papel px-3 py-2 text-xs">
+              <span className="text-cinza">O cliente vê também: </span>
+              {alternativas.map((x) => (
+                <span key={x.quantidade} className="mr-4 whitespace-nowrap">
+                  <b>{numero(x.quantidade)} un</b> a {euros(x.precoUnit)}/un ({euros(x.total)})
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </section>
+  );
+}
+
+/** Texto livre "50, 100" ⇄ lista de números. Guarda o texto enquanto se escreve. */
+function QuantidadesAlternativas({ valor, aoMudar }: { valor?: number[]; aoMudar: (q: number[] | undefined) => void }) {
+  const [texto, setTexto] = useState((valor ?? []).join(", "));
+  return (
+    <input
+      className="campo"
+      inputMode="numeric"
+      placeholder="ex.: 50, 100"
+      value={texto}
+      onChange={(e) => {
+        setTexto(e.target.value);
+        const q = [...new Set(e.target.value.split(/[^0-9]+/).map(Number).filter((n) => n > 0))].sort((a, b) => a - b);
+        aoMudar(q.length ? q : undefined);
+      }}
+    />
   );
 }
 

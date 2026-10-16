@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMemo } from "react";
-import { calcularOrcamento, NOME_TECNICA, type ResultadoLinha } from "@/lib/producao/engine";
+import { calcularOrcamento, NOME_TECNICA, precosPorQuantidade, type GrupoOpcoes, type ResultadoLinha } from "@/lib/producao/engine";
 import { dataPt, euros, numero, percent } from "@/lib/producao/format";
 import { useCarregado, useDados } from "@/app/(app)/producao/_lib/store";
 import type { Aplicacao } from "@/lib/producao/types";
@@ -41,6 +41,8 @@ export default function Documento() {
   const gruposAbertos = r.grupos.filter((g) => !g.escolhida);
   const pecasDoCliente = o.linhas.some((l) => l.artigoDoCliente);
   const imagemDe = (l: (typeof r.linhas)[number]) => dados.artigos.find((a) => a.id === l.linha.artigoId)?.imagem;
+  const alternativasDe = (l: (typeof r.linhas)[number]) =>
+    l.linha.quantidadesAlternativas?.length ? precosPorQuantidade(p, o, l.linha.id, l.linha.quantidadesAlternativas) : undefined;
   const validade = new Date(o.data);
   validade.setDate(validade.getDate() + p.validadeDias);
 
@@ -100,7 +102,7 @@ export default function Documento() {
             </thead>
             <tbody>
               {linhasTabela.map((l) => (
-                <LinhaDoc key={l.linha.id} l={l} precoUnit={precoUnit(l)} total={totalLinha(l)} imagem={imagemDe(l)} />
+                <LinhaDoc key={l.linha.id} l={l} precoUnit={precoUnit(l)} total={totalLinha(l)} imagem={imagemDe(l)} alternativas={alternativasDe(l)} />
               ))}
               {r.vendaCriacao > 0 && (
                 <tr className="border-b border-linha">
@@ -127,14 +129,12 @@ export default function Documento() {
                   <th className="py-2 px-2 text-right font-medium">Qtd</th>
                   <th className="py-2 px-2 text-right font-medium">Preço/un</th>
                   <th className="py-2 px-2 text-right font-medium">Total da opção</th>
-                  {linhasTabela.length > 0 && <th className="py-2 pl-2 text-right font-medium">Total do orçamento</th>}
                 </tr>
               </thead>
               <tbody>
                 {r.linhas
                   .filter((l) => l.linha.grupoOpcao === g.grupo)
                   .map((l, i) => {
-                    const op = g.opcoes.find((x) => x.linhaId === l.linha.id)!;
                     return (
                       <LinhaDoc
                         key={l.linha.id}
@@ -142,28 +142,27 @@ export default function Documento() {
                         rotulo={`Opção ${String.fromCharCode(65 + i)}`}
                         precoUnit={precoUnit(l)}
                         total={totalLinha(l)}
-                        totalOrcamento={linhasTabela.length > 0 ? op.totalComBase * fator : undefined}
                         imagem={imagemDe(l)}
+                        alternativas={alternativasDe(l)}
                       />
                     );
                   })}
               </tbody>
             </table>
             <p className="mt-2 text-xs text-cinza">
-              Valores sem IVA ({percent(p.iva)}).
-              {linhasTabela.length > 0 ? " O total do orçamento junta a opção aos artigos acima." : ""}
+              Valores sem IVA. O total do orçamento, com cada opção, está no fim.
             </p>
           </section>
         ))}
 
         <div className="mt-6 ml-auto w-full max-w-xs space-y-1 text-sm">
           {gruposAbertos.length > 0 ? (
-            linhasTabela.length > 0 && (
-              <div className="flex justify-between">
-                <span className="text-cinza">Total sem as opções, s/ IVA</span>
-                <span className="tabular-nums">{euros(r.total * fator)}</span>
-              </div>
-            )
+            <TotaisComOpcoes
+              grupos={gruposAbertos}
+              base={linhasTabela.length > 0 || r.vendaCriacao > 0 ? r.total * fator : 0}
+              fator={fator}
+              iva={p.iva}
+            />
           ) : (
             <>
               {r.desconto > 0 && (
@@ -222,6 +221,7 @@ function LinhaDoc({
   total,
   totalOrcamento,
   imagem,
+  alternativas,
 }: {
   l: ResultadoLinha;
   rotulo?: string;
@@ -229,6 +229,7 @@ function LinhaDoc({
   total: number;
   totalOrcamento?: number;
   imagem?: string;
+  alternativas?: { quantidade: number; precoUnit: number; total: number }[];
 }) {
   return (
     <tr className="break-inside-avoid border-b border-linha">
@@ -247,6 +248,16 @@ function LinhaDoc({
             {descreverAplicacao(a.aplicacao)}
           </div>
         ))}
+        {alternativas && alternativas.length > 0 && (
+          <div className="mt-1.5 rounded bg-beige-claro/70 px-2 py-1 text-xs">
+            <span className="text-cinza">Noutras quantidades: </span>
+            {alternativas.map((x) => (
+              <span key={x.quantidade} className="mr-3 whitespace-nowrap">
+                <b>{numero(x.quantidade)} un</b> a {euros(x.precoUnit)}/un ({euros(x.total)})
+              </span>
+            ))}
+          </div>
+        )}
         </div>
         </div>
       </td>
@@ -276,6 +287,48 @@ function Condicoes({ texto }: { texto: string }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+/**
+ * Total do orçamento com cada opção, no fim do documento. Os artigos sem opção
+ * aparecem à parte, para se ver de onde vem cada total.
+ */
+function TotaisComOpcoes({ grupos, base, fator, iva }: { grupos: GrupoOpcoes[]; base: number; fator: number; iva: number }) {
+  return (
+    <div className="w-full">
+      <div className="mb-1 text-xs uppercase tracking-[0.2em] text-mostarda">Total do orçamento</div>
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="text-xs text-cinza">
+            <th />
+            <th className="py-1 text-right font-medium">s/ IVA</th>
+            <th className="py-1 pl-3 text-right font-medium">c/ IVA</th>
+          </tr>
+        </thead>
+        <tbody>
+          {base > 0 && (
+            <tr className="text-cinza">
+              <td className="py-1">Artigos sem opção</td>
+              <td className="py-1 text-right tabular-nums">{euros(base)}</td>
+              <td className="py-1 pl-3 text-right tabular-nums">{euros(base * (1 + iva))}</td>
+            </tr>
+          )}
+          {grupos.map((g) =>
+            g.opcoes.map((x, i) => (
+              <tr key={x.linhaId} className="border-t border-linha font-medium">
+                <td className="py-1.5">
+                  {grupos.length > 1 ? `${g.grupo}: ` : ""}com a Opção {String.fromCharCode(65 + i)}
+                  {base > 0 && <span className="font-normal text-cinza"> (artigos + opção)</span>}
+                </td>
+                <td className="py-1.5 text-right tabular-nums">{euros(x.totalComBase * fator)}</td>
+                <td className="py-1.5 pl-3 text-right tabular-nums">{euros(x.totalComBase * fator * (1 + iva))}</td>
+              </tr>
+            )),
+          )}
+        </tbody>
+      </table>
     </div>
   );
 }

@@ -237,6 +237,8 @@ export interface LinhaOrcamento {
   lote?: string;
   // Peças já encomendadas deste trabalho noutras encomendas: contam para o escalão
   pecasAnteriores?: number;
+  // Outras quantidades a mostrar ao cliente, com o preço de cada uma
+  quantidadesAlternativas?: number[];
   // Linhas com o mesmo grupo são alternativas: o cliente escolhe uma.
   // Vazio = linha normal, que conta sempre.
   grupoOpcao?: string;
