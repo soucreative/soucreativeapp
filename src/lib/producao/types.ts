@@ -163,6 +163,8 @@ export interface Parametros {
   margemSegura?: number;
   // Desconto máximo do preço praticado sobre o sugerido (para cima não há limite)
   descontoMaximo?: number;
+  // Correções ao agrupamento automático de variantes, por id de artigo
+  ajustesVariantes?: Record<string, AjusteVariante>;
   // Famílias de produtos do TOC que entram no catálogo de artigos (nomes)
   tocFamiliasArtigos?: string[];
   tocUltimaSincronizacao?: string;
@@ -187,6 +189,14 @@ export interface Artigo {
   nota?: string;
   // URL pública da imagem (armazenamento "artigos"); vem do servidor, não se edita
   imagem?: string;
+}
+
+// Correção manual de um artigo no agrupamento de variantes.
+// modelo: nome do modelo onde entra; null = fica sozinho, fora de qualquer modelo.
+export interface AjusteVariante {
+  modelo?: string | null;
+  cor?: string;
+  tamanho?: string;
 }
 
 export interface Cliente {
@@ -247,6 +257,10 @@ export interface LinhaOrcamento {
   // Linhas com o mesmo grupo são alternativas: o cliente escolhe uma.
   // Vazio = linha normal, que conta sempre.
   grupoOpcao?: string;
+  // Modelo com variantes: a quantidade reparte-se por cores e tamanhos. A
+  // quantidade e o custo da linha são a soma e a média ponderada da grelha.
+  modeloId?: string;
+  grelha?: { artigoId: string; quantidade: number }[];
 }
 
 export interface Orcamento {

@@ -21,6 +21,8 @@ import {
   useCarregado,
   useDados,
 } from "@/app/(app)/producao/_lib/store";
+import { useModelos } from "@/app/(app)/producao/_lib/modelos";
+import type { Modelo } from "@/lib/producao/variantes";
 import type { Aplicacao, Artigo, EstadoOrcamento, LinhaOrcamento, Orcamento, TipoCliente } from "@/lib/producao/types";
 
 export default function EditorOrcamento() {
@@ -439,10 +441,30 @@ function EditorLinha({
       : [];
   const mudarAplicacoes = (fn: (as: Aplicacao[]) => Aplicacao[]) => aoMudar((cur) => ({ ...cur, aplicacoes: fn(cur.aplicacoes) }));
 
+  const { modelos, modeloDe } = useModelos();
+  const modelo = l.modeloId ? modelos.find((m) => m.id === l.modeloId) : undefined;
+  const comGrelha = !!modelo && (l.grelha ?? []).some((g) => g.quantidade > 0);
+
+  const escolherModelo = (m: Modelo) => {
+    const primeiro = m.variantes[0].artigo;
+    set({
+      modeloId: m.id,
+      grelha: [],
+      artigoId: (m.variantes.find((v) => v.artigo.imagem) ?? m.variantes[0]).artigo.id,
+      descricao: m.nome,
+      custoArtigo: m.custoMax,
+      minimoArtigo: primeiro.minimo,
+      portes: primeiro.portes,
+      fornecedor: primeiro.fornecedor,
+    });
+  };
+
   const escolherArtigo = (id: string) => {
     const a = artigos.find((x) => x.id === id);
-    if (!a) return set({ artigoId: undefined });
+    if (!a) return set({ artigoId: undefined, modeloId: undefined, grelha: undefined });
     set({
+      modeloId: undefined,
+      grelha: undefined,
       artigoId: a.id,
       descricao: a.nome,
       custoArtigo: a.custo,
@@ -485,8 +507,12 @@ function EditorLinha({
             <div className="flex-1">
             <SeletorArtigo
               artigos={artigos}
+              modelos={modelos}
+              modeloDe={modeloDe}
               escolhido={artigos.find((a) => a.id === l.artigoId)}
+              modeloEscolhido={modelo}
               aoEscolher={(id) => escolherArtigo(id ?? "")}
+              aoEscolherModelo={escolherModelo}
             />
             </div>
             </div>
@@ -497,10 +523,38 @@ function EditorLinha({
             <input className="campo" value={l.descricao} onChange={(e) => set({ descricao: e.target.value })} />
           </Rotulado>
         </div>
-        <Rotulado rotulo="Quantidade">
-          <CampoNumero valor={l.quantidade} aoMudar={(n) => set({ quantidade: Math.round(n ?? 0) })} min={0} />
+        {modelo && (
+          <div className="sm:col-span-2 lg:col-span-6">
+            <GrelhaVariantes
+              modelo={modelo}
+              grelha={l.grelha ?? []}
+              aoMudar={(grelha) => {
+                const total = grelha.reduce((s, g) => s + g.quantidade, 0);
+                const custo = (id: string) => modelo.variantes.find((v) => v.artigo.id === id)?.artigo.custo ?? 0;
+                const maior = [...grelha].sort((a, b) => b.quantidade - a.quantidade)[0];
+                const comImagem = grelha.find((g) => g.quantidade > 0 && artigos.find((a) => a.id === g.artigoId)?.imagem);
+                set({
+                  grelha,
+                  ...(total > 0
+                    ? {
+                        quantidade: total,
+                        custoArtigo: Math.round((grelha.reduce((s, g) => s + g.quantidade * custo(g.artigoId), 0) / total) * 10000) / 10000,
+                        artigoId: (comImagem ?? maior).artigoId,
+                      }
+                    : {}),
+                });
+              }}
+            />
+          </div>
+        )}
+        <Rotulado rotulo="Quantidade" ajuda={comGrelha ? "Soma da grelha de cores e tamanhos" : undefined}>
+          {comGrelha ? (
+            <div className="campo bg-papel tabular-nums">{numero(l.quantidade)}</div>
+          ) : (
+            <CampoNumero valor={l.quantidade} aoMudar={(n) => set({ quantidade: Math.round(n ?? 0) })} min={0} />
+          )}
         </Rotulado>
-        <Rotulado rotulo="Custo da peça">
+        <Rotulado rotulo="Custo da peça" ajuda={comGrelha ? "Média ponderada das variantes" : undefined}>
           <CampoNumero valor={l.custoArtigo} aoMudar={(n) => set({ custoArtigo: n ?? 0 })} sufixo="€" min={0} />
         </Rotulado>
         <Rotulado rotulo="Mínimo fornecedor">
@@ -586,6 +640,77 @@ function EditorLinha({
         </div>
       )}
     </section>
+  );
+}
+
+/**
+ * Quantidades por cor (linhas) e tamanho (colunas). Só há caixa onde a
+ * variante existe no catálogo; o custo diferente de uma variante aparece por
+ * baixo da caixa, para se ver porque o custo médio mexe.
+ */
+function GrelhaVariantes({
+  modelo,
+  grelha,
+  aoMudar,
+}: {
+  modelo: Modelo;
+  grelha: { artigoId: string; quantidade: number }[];
+  aoMudar: (g: { artigoId: string; quantidade: number }[]) => void;
+}) {
+  const qtd = (id: string) => grelha.find((g) => g.artigoId === id)?.quantidade;
+  const mudar = (id: string, n: number | undefined) => {
+    const resto = grelha.filter((g) => g.artigoId !== id);
+    aoMudar(n && n > 0 ? [...resto, { artigoId: id, quantidade: Math.round(n) }] : resto);
+  };
+  const custoComum = modelo.custoMin === modelo.custoMax;
+  const total = grelha.reduce((s, g) => s + g.quantidade, 0);
+  return (
+    <div className="rounded-md border border-linha bg-papel p-3">
+      <div className="mb-2 flex flex-wrap items-baseline gap-2 text-xs text-cinza">
+        <span className="rotulo">Cores e tamanhos</span>
+        <span>
+          {modelo.variantes.length} variantes no TOC
+          {custoComum ? ` · custo ${euros(modelo.custoMin)}` : ` · custo de ${euros(modelo.custoMin)} a ${euros(modelo.custoMax)}`}
+        </span>
+        <span className="ml-auto font-medium text-tinta">Total {numero(total)} un</span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="text-sm">
+          <thead>
+            <tr className="text-xs text-cinza">
+              <th className="pr-3 text-left font-medium">Cor</th>
+              {modelo.tamanhos.map((t) => (
+                <th key={t} className="w-16 px-1 text-center font-medium">
+                  {t || "—"}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {modelo.cores.map((cor) => (
+              <tr key={cor}>
+                <td className="whitespace-nowrap pr-3">{cor || "—"}</td>
+                {modelo.tamanhos.map((t) => {
+                  const v = modelo.variantes.find((x) => x.cor === cor && x.tamanho === t);
+                  return (
+                    <td key={t} className="px-1 py-0.5 align-top">
+                      {v ? (
+                        <>
+                          <CampoNumero valor={qtd(v.artigo.id)} vazio min={0} aoMudar={(n) => mudar(v.artigo.id, n)} className="text-center" />
+                          {!custoComum && <div className="text-center text-[10px] text-cinza">{euros(v.artigo.custo)}</div>}
+                        </>
+                      ) : (
+                        <div className="text-center text-cinza">·</div>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
 

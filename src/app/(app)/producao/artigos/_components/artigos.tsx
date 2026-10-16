@@ -7,6 +7,8 @@ import { ImagemArtigo } from "@/app/(app)/producao/_components/imagem-artigo";
 import { apagarArtigo, guardarArtigo, novoId, sincronizarArtigos, useDados } from "@/app/(app)/producao/_lib/store";
 import { familiasToc } from "@/app/(app)/producao/actions";
 import { dataPt } from "@/lib/producao/format";
+import { useModelos } from "@/app/(app)/producao/_lib/modelos";
+import { CampoModelo, ListaModelos } from "@/app/(app)/producao/artigos/_components/modelos";
 import type { Artigo } from "@/lib/producao/types";
 
 const POR_PAGINA = 100;
@@ -18,6 +20,9 @@ export default function ListaArtigos() {
   const [categoria, setCategoria] = useState("");
   const [limite, setLimite] = useState(POR_PAGINA);
   const [novo, setNovo] = useState(false);
+  const [vista, setVista] = useState<"artigos" | "modelos">("artigos");
+  const { modelos, modeloDe } = useModelos();
+  const nomesModelos = useMemo(() => [...new Set(modelos.map((m) => m.nome))], [modelos]);
   const set = (a: Artigo, p: Partial<Artigo>) => guardarArtigo({ ...a, ...p });
 
   const categorias = useMemo(
@@ -67,22 +72,39 @@ export default function ListaArtigos() {
 
       <SincronizarToc />
 
+      <div className="mb-3 flex gap-1">
+        {([
+          ["artigos", `Artigos (${dados.artigos.length})`],
+          ["modelos", `Modelos com variantes (${modelos.length})`],
+        ] as const).map(([v, t]) => (
+          <button key={v} className={vista === v ? "botao-principal" : "botao-secundario"} onClick={() => setVista(v)}>
+            {t}
+          </button>
+        ))}
+      </div>
+
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <input className="campo max-w-xs" placeholder="Procurar nome, código ou fornecedor" value={filtro} onChange={(e) => setFiltro(e.target.value)} />
+        {vista === "artigos" && (
         <select className="campo w-auto" value={origem} onChange={(e) => setOrigem(e.target.value as typeof origem)}>
           <option value="todos">Todas as origens</option>
           <option value="toc">Do TOC</option>
           <option value="app">Provisórios (só na app)</option>
         </select>
+        )}
         <select className="campo w-auto" value={categoria} onChange={(e) => setCategoria(e.target.value)}>
           <option value="">Todas as famílias</option>
           {categorias.map((c) => (
             <option key={c}>{c}</option>
           ))}
         </select>
-        <span className="ml-auto text-xs text-cinza">{artigos.length} artigos</span>
+        {vista === "artigos" && <span className="ml-auto text-xs text-cinza">{artigos.length} artigos</span>}
       </div>
 
+      {vista === "modelos" ? (
+        <ListaModelos filtro={filtro} categoria={categoria} />
+      ) : (
+      <>
       <div className="cartao overflow-x-auto p-0">
         <table className="tabela">
           <thead>
@@ -111,6 +133,7 @@ export default function ListaArtigos() {
                   <td>
                     <input className="campo" value={a.nome} disabled={doToc} onChange={(e) => set(a, { nome: e.target.value })} />
                     {a.nota && <div className="mt-0.5 text-[11px] text-cinza">{a.nota}</div>}
+                    <CampoModelo key={modeloDe.get(a.id)?.id ?? "-"} artigoId={a.id} atual={modeloDe.get(a.id)?.nome} nomes={nomesModelos} />
                   </td>
                   <td>
                     <input className="campo" value={a.fornecedor} onChange={(e) => set(a, { fornecedor: e.target.value })} />
@@ -163,6 +186,8 @@ export default function ListaArtigos() {
         portes ficam como os deixar aqui. Os portes contam uma vez por fornecedor em cada orçamento. Apagar um artigo não mexe nos
         orçamentos que já o usam.
       </p>
+      </>
+      )}
     </>
   );
 }

@@ -6,6 +6,14 @@
 
 ## ✅ CONCLUÍDO
 
+### Variantes de cor e tamanho, descontos e preços por quantidade *(2026-10-16)*
+
+- Artigos do TOC agrupados em modelos pelo código (Família-Modelo-Tamanho-Cor_Fornecedor; nos códigos de 8 dígitos, 5 de modelo + 3 de cor). 325 dos 574 artigos ficam em 57 modelos.
+- No orçamento escolhe-se o modelo e reparte-se a quantidade numa grelha cores × tamanhos; a quantidade é a soma e o custo a média ponderada. O PDF mostra a repartição.
+- Página Artigos → "Modelos com variantes" para corrigir cor, tamanho, nome ou tirar um artigo do modelo; as correções ficam nos parâmetros e sobrevivem às sincronizações.
+- Preço praticado: até 5% abaixo do sugerido (parâmetro), sem limite para cima; alerta de margem segura / arriscada / prejuízo; desconto visível no PDF.
+- Preço noutras quantidades ("Mostrar também para") e total com cada opção no fim do documento; rodapé com a entidade legal.
+
 ### Pipeline, artigos do TOC e equipa *(2026-10-14)*
 - [x] Pipeline de produção: por iniciar, em produção, pronto, entregue; prazo prometido, responsável, notas e prioridade por trabalho
 - [x] Data prevista de cada trabalho pela carga de cada máquina e da equipa, em dias úteis; aviso quando passa o prazo prometido

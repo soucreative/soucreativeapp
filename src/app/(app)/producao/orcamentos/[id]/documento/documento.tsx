@@ -7,6 +7,8 @@ import { useMemo } from "react";
 import { calcularOrcamento, NOME_TECNICA, precosPorQuantidade, type GrupoOpcoes, type ResultadoLinha } from "@/lib/producao/engine";
 import { dataPt, euros, numero, percent } from "@/lib/producao/format";
 import { useCarregado, useDados } from "@/app/(app)/producao/_lib/store";
+import { useModelos } from "@/app/(app)/producao/_lib/modelos";
+import { descreverGrelha } from "@/lib/producao/variantes";
 import type { Aplicacao } from "@/lib/producao/types";
 
 function descreverAplicacao(a: Aplicacao): string {
@@ -23,6 +25,7 @@ export default function Documento() {
   const o = dados.orcamentos.find((x) => x.id === id);
   const p = dados.parametros;
   const r = useMemo(() => (o ? calcularOrcamento(p, o) : null), [p, o]);
+  const { modelos } = useModelos();
 
   if (!carregado) return null;
   if (!o || !r) return <p className="text-cinza">Orçamento não encontrado.</p>;
@@ -52,6 +55,10 @@ export default function Documento() {
   const imagemDe = (l: (typeof r.linhas)[number]) => dados.artigos.find((a) => a.id === l.linha.artigoId)?.imagem;
   const alternativasDe = (l: (typeof r.linhas)[number]) =>
     l.linha.quantidadesAlternativas?.length ? precosPorQuantidade(p, o, l.linha.id, l.linha.quantidadesAlternativas) : undefined;
+  const reparticaoDe = (l: (typeof r.linhas)[number]) =>
+    l.linha.modeloId && l.linha.grelha?.length
+      ? descreverGrelha(modelos.find((m) => m.id === l.linha.modeloId), l.linha.grelha) || undefined
+      : undefined;
   const validade = new Date(o.data);
   validade.setDate(validade.getDate() + p.validadeDias);
 
@@ -111,7 +118,7 @@ export default function Documento() {
             </thead>
             <tbody>
               {linhasTabela.map((l) => (
-                <LinhaDoc key={l.linha.id} l={l} precoUnit={precoUnit(l)} precoTabela={precoTabela(l)} total={totalLinha(l)} imagem={imagemDe(l)} alternativas={alternativasDe(l)} />
+                <LinhaDoc key={l.linha.id} l={l} precoUnit={precoUnit(l)} precoTabela={precoTabela(l)} total={totalLinha(l)} imagem={imagemDe(l)} alternativas={alternativasDe(l)} reparticao={reparticaoDe(l)} />
               ))}
               {r.vendaCriacao > 0 && (
                 <tr className="border-b border-linha">
@@ -154,6 +161,7 @@ export default function Documento() {
                         total={totalLinha(l)}
                         imagem={imagemDe(l)}
                         alternativas={alternativasDe(l)}
+                        reparticao={reparticaoDe(l)}
                       />
                     );
                   })}
@@ -245,6 +253,7 @@ function LinhaDoc({
   totalOrcamento,
   imagem,
   alternativas,
+  reparticao,
 }: {
   l: ResultadoLinha;
   rotulo?: string;
@@ -254,6 +263,7 @@ function LinhaDoc({
   totalOrcamento?: number;
   imagem?: string;
   alternativas?: { quantidade: number; precoUnit: number; total: number }[];
+  reparticao?: string;
 }) {
   return (
     <tr className="break-inside-avoid border-b border-linha">
@@ -266,6 +276,7 @@ function LinhaDoc({
         <div>
         {rotulo && <div className="text-xs font-medium uppercase tracking-wider text-mostarda">{rotulo}</div>}
         <div className="font-medium">{l.linha.descricao || "Artigo"}</div>
+        {reparticao && <div className="text-xs text-cinza">{reparticao}</div>}
         {l.linha.artigoDoCliente && <div className="text-xs text-cinza">Peça fornecida pelo cliente</div>}
         {precoTabela != null && (
           <div className="text-xs font-medium text-verde">Desconto de {percent(1 - precoUnit / precoTabela)} sobre o preço de tabela</div>
