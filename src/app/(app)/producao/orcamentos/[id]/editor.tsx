@@ -191,7 +191,7 @@ function Editor({ o }: { o: Orcamento }) {
           )}
 
           <section className="cartao">
-            <h2 className="titulo mb-4 text-lg text-verde">Criação, desconto e notas</h2>
+            <h2 className="titulo mb-4 text-lg text-verde">Criação e desconto</h2>
             <div className="grid gap-3 sm:grid-cols-3">
               <Rotulado rotulo="Horas de criação (arte feita pela SOU)" ajuda={`${euros(r.vendaCriacao)} ao preço/hora da designer`}>
                 <CampoNumero valor={o.horasCriacao} aoMudar={(n) => set({ horasCriacao: n ?? 0 })} sufixo="h" min={0} />

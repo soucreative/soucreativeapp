@@ -196,7 +196,7 @@ export default function Documento() {
 
         {o.notas && (
           <section className="mt-10">
-            <h2 className="mb-1 text-xs uppercase tracking-[0.2em] text-mostarda">Notas</h2>
+            <h2 className="mb-1 text-xs uppercase tracking-[0.2em] text-mostarda">Observações</h2>
             <p className="whitespace-pre-line text-sm">{o.notas}</p>
           </section>
         )}
