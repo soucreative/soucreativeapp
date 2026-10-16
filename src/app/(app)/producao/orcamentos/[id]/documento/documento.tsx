@@ -39,6 +39,7 @@ export default function Documento() {
   // Linhas que entram na tabela: as normais e, depois de ganho, a opção escolhida
   const linhasTabela = r.linhas.filter((l) => l.incluida);
   const gruposAbertos = r.grupos.filter((g) => !g.escolhida);
+  const pecasDoCliente = o.linhas.some((l) => l.artigoDoCliente);
   const imagemDe = (l: (typeof r.linhas)[number]) => dados.artigos.find((a) => a.id === l.linha.artigoId)?.imagem;
   const validade = new Date(o.data);
   validade.setDate(validade.getDate() + p.validadeDias);
@@ -199,10 +200,10 @@ export default function Documento() {
             <p className="whitespace-pre-line text-sm">{o.notas}</p>
           </section>
         )}
-        {e.condicoes && (
-          <section className="mt-6">
-            <h2 className="mb-1 text-xs uppercase tracking-[0.2em] text-mostarda">Condições</h2>
-            <p className="whitespace-pre-line text-xs text-cinza">{e.condicoes}</p>
+        {(e.condicoes || (pecasDoCliente && e.condicoesPecasCliente)) && (
+          <section className="mt-8 break-before-auto">
+            <h2 className="mb-2 text-xs uppercase tracking-[0.2em] text-mostarda">Termos e condições</h2>
+            <Condicoes texto={[pecasDoCliente ? e.condicoesPecasCliente : "", e.condicoes].filter(Boolean).join("\n\n")} />
           </section>
         )}
 
@@ -254,5 +255,27 @@ function LinhaDoc({
       <td className="py-3 px-2 text-right tabular-nums">{euros(total)}</td>
       {totalOrcamento != null && <td className="py-3 pl-2 text-right font-medium tabular-nums">{euros(totalOrcamento)}</td>}
     </tr>
+  );
+}
+
+/** Texto das condições: as linhas em maiúsculas são títulos de secção. */
+function Condicoes({ texto }: { texto: string }) {
+  const blocos = texto.split(/\n\s*\n/).map((b) => b.split("\n").filter((x) => x.trim()));
+  return (
+    <div className="columns-1 gap-6 text-[8pt] leading-snug text-cinza sm:columns-2 print:columns-2">
+      {blocos.map((linhas, i) => {
+        const titulo = linhas[0] && linhas[0] === linhas[0].toUpperCase() && linhas[0].length < 60 ? linhas[0] : null;
+        return (
+          <div key={i} className="mb-3 break-inside-avoid">
+            {titulo && <div className="mb-0.5 font-semibold text-tinta">{titulo.charAt(0) + titulo.slice(1).toLowerCase()}</div>}
+            {(titulo ? linhas.slice(1) : linhas).map((t, j) => (
+              <p key={j} className="mb-0.5">
+                {t}
+              </p>
+            ))}
+          </div>
+        );
+      })}
+    </div>
   );
 }

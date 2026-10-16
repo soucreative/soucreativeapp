@@ -552,11 +552,18 @@ export default function EditorParametros() {
             <Rotulado rotulo="Morada">
               <textarea className="campo mt-1 min-h-16" value={p.empresa.morada} onChange={(e) => mudar((d) => void (d.empresa.morada = e.target.value))} />
             </Rotulado>
-            <Rotulado rotulo="Condições (saem em todos os orçamentos)">
+            <Rotulado rotulo="Termos e condições (saem em todos os orçamentos)" ajuda="Linhas em MAIÚSCULAS são títulos de secção; uma linha em branco separa secções.">
               <textarea
-                className="campo mt-1 min-h-24"
+                className="campo mt-1 min-h-64 text-xs"
                 value={p.empresa.condicoes}
                 onChange={(e) => mudar((d) => void (d.empresa.condicoes = e.target.value))}
+              />
+            </Rotulado>
+            <Rotulado rotulo="Peças fornecidas pelo cliente" ajuda="Só sai nos orçamentos com algum artigo marcado com &quot;O cliente traz a peça&quot;.">
+              <textarea
+                className="campo mt-1 min-h-32 text-xs"
+                value={p.empresa.condicoesPecasCliente ?? ""}
+                onChange={(e) => mudar((d) => void (d.empresa.condicoesPecasCliente = e.target.value))}
               />
             </Rotulado>
           </Seccao>

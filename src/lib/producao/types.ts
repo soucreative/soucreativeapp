@@ -139,6 +139,8 @@ export interface DadosEmpresa {
   telefone: string;
   site: string;
   condicoes: string; // texto que sai no fim de cada orçamento
+  // Só sai nos orçamentos com algum artigo fornecido pelo cliente
+  condicoesPecasCliente?: string;
 }
 
 export interface Parametros {
