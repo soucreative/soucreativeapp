@@ -8,7 +8,7 @@ import { validateVacation, type VacationPeriod } from '@/lib/vacation-rules'
 import { workingDaysBetween } from '@/lib/holidays'
 
 /** Quem gere as ausências de toda a gente — as outras pessoas só tratam das suas */
-const ABSENCE_MANAGERS = ['management', 'director'] as const
+const ABSENCE_MANAGERS = ['management'] as const
 
 // ── createAbsence ──────────────────────────────────────────────────────────
 

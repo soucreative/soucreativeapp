@@ -94,8 +94,10 @@ export default async function FeriasPage({
       .eq('year', filterYear),
   ])
 
-  const allEmps     = (empsRes.data    ?? []) as EmpRow[]
-  const allAbs      = (absRes.data     ?? []) as Absence[]
+  // Fora da gestão, cada pessoa só vê a sua linha e as suas ausências
+  const proprio     = (id: string) => isAdmin || id === session?.id
+  const allEmps     = ((empsRes.data    ?? []) as EmpRow[]).filter(e => proprio(e.id))
+  const allAbs      = ((absRes.data     ?? []) as Absence[]).filter(a => proprio(a.employee_id))
   const yearSettings = settingsRes.data as VacationSettings | null
   const exchanges   = (exchangesRes.data ?? []) as { employee_id: string; extra_days: number }[]
 

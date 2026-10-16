@@ -16,7 +16,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex min-h-screen bg-slate-50">
-      <Sidebar role={role} name={name} />
+      <Sidebar role={role} name={name} employeeId={emp.id} />
       <InternGuard isIntern={role === 'intern'} />
       <main className="flex-1 ml-60 min-h-screen min-w-0 overflow-x-clip">
         {children}

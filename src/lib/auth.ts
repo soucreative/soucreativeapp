@@ -62,6 +62,9 @@ export async function getSessionWithRole(roles: readonly UserRole[]): Promise<Se
  */
 export async function requirePageAccess(path: string): Promise<SessionEmployee> {
   const session = await getCurrentEmployee()
-  if (!session || !canAccess(session.app_role, path)) redirect(path === '/' ? '/perfil' : '/')
+  if (!session) redirect('/login')
+  if (!canAccess(session.app_role, path)) {
+    redirect(path !== '/producao' && canAccess(session.app_role, '/producao') ? '/producao' : '/perfil')
+  }
   return session
 }

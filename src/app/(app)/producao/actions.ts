@@ -9,7 +9,7 @@ import { artigoDeLinha, carregarParametros, ficheiroImagem } from './_lib/dados'
 
 /** A equipa de produção usa a calculadora; os parâmetros de custo são da gestão. */
 const PRODUCAO = ['management', 'director', 'employee'] as const
-const GESTAO   = ['management', 'director'] as const
+const GESTAO   = ['management'] as const
 
 type Resultado<T = null> = { ok: true; valor: T } | { ok: false; erro: string }
 

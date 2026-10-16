@@ -5,7 +5,7 @@ import { getSessionWithRole } from '@/lib/auth'
 import { revalidatePath } from 'next/cache'
 
 export async function upsertReview(_: unknown, formData: FormData) {
-  if (!(await getSessionWithRole(['management', 'director']))) return { error: 'Sem permissão.' }
+  if (!(await getSessionWithRole(['management']))) return { error: 'Sem permissão.' }
   const supabase = createAdminClient()
 
   const id          = formData.get('id') as string | null
@@ -64,7 +64,7 @@ export async function upsertReview(_: unknown, formData: FormData) {
 }
 
 export async function deleteReview(_: unknown, formData: FormData) {
-  if (!(await getSessionWithRole(['management', 'director']))) return { error: 'Sem permissão.' }
+  if (!(await getSessionWithRole(['management']))) return { error: 'Sem permissão.' }
   const supabase = createAdminClient()
   const id = formData.get('id') as string
   const { error } = await supabase.from('quarterly_reviews').delete().eq('id', id)

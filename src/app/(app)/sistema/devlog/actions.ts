@@ -17,7 +17,7 @@ function decide(role: UserRole) {
 
 export async function registarIdeia(_: unknown, formData: FormData) {
   const s = await getCurrentEmployee()
-  if (!s) return { error: 'Sem permissão.' }
+  if (!s || !decide(s.app_role)) return { error: 'Sem permissão.' }
   const titulo = ((formData.get('titulo') as string) || '').trim()
   if (!titulo) return { error: 'Falta o título.' }
   const { error } = await createAdminClient().from('dev_ideias').insert({

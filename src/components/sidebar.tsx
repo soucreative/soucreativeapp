@@ -65,13 +65,20 @@ const NAV_GROUPS: NavGroup[] = [
   },
 ]
 
-export default function Sidebar({ role, name }: { role: UserRole; name?: string }) {
+export default function Sidebar({ role, name, employeeId }: { role: UserRole; name?: string; employeeId?: string }) {
   const pathname = usePathname()
 
   const visibleGroups = NAV_GROUPS
     .map(group => ({
       ...group,
-      items: group.items.filter(item => canAccess(role, item.href)),
+      items: group.items.flatMap((item): NavItem[] => {
+        if (canAccess(role, item.href)) return [item]
+        // Quem não vê a lista de colaboradores abre a sua própria ficha
+        if (item.href === '/colaboradores' && employeeId && role !== 'intern') {
+          return [{ href: `/colaboradores/${employeeId}`, label: 'A minha ficha', icon: item.icon }]
+        }
+        return []
+      }),
     }))
     .filter(group => group.items.length > 0)
 

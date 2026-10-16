@@ -13,30 +13,47 @@ export function isFullAccess(role: UserRole): boolean {
 // master / admin → always allowed (SUPER check above)
 // Listed roles are non-super roles that CAN access the route.
 
+// Nesta fase: os colaboradores (e diretores) usam a Produção e, em Pessoas,
+// só veem o que é seu (a própria ficha e as próprias férias). Performance,
+// Gestão e Sistema são só para a gestão.
+const EQUIPA: UserRole[] = ['management', 'director', 'employee']
+const GESTAO: UserRole[] = ['management']
+
 export const NAV_ACCESS: Record<string, UserRole[]> = {
-  '/':              ['management', 'director', 'employee'],
-  // Produção — a equipa usa no dia a dia; a gestão supervisiona
-  '/producao':               ['management', 'director', 'employee'],
-  '/producao/orcamentos':    ['management', 'director', 'employee'],
-  '/producao/pipeline':      ['management', 'director', 'employee'],
-  '/producao/clientes':      ['management', 'director', 'employee'],
-  '/producao/artigos':       ['management', 'director', 'employee'],
-  '/producao/consumiveis':   ['management', 'director', 'employee'],
-  '/producao/tabela-precos': ['management', 'director', 'employee'],
-  '/producao/parametros':    ['management', 'director'],
-  '/horas':          ['management', 'director', 'employee'],
-  '/colaboradores': ['management', 'director'],
+  // Gestão
+  '/':              GESTAO,
+  '/financeiro':    GESTAO,
+  '/orcamento':     GESTAO,
+  // Produção — a equipa usa no dia a dia. Os parâmetros têm o custo/hora de
+  // cada pessoa (vem dos salários) e mexem em todos os preços: só a gestão.
+  '/producao':               EQUIPA,
+  '/producao/orcamentos':    EQUIPA,
+  '/producao/pipeline':      EQUIPA,
+  '/producao/clientes':      EQUIPA,
+  '/producao/artigos':       EQUIPA,
+  '/producao/consumiveis':   EQUIPA,
+  '/producao/tabela-precos': EQUIPA,
+  '/producao/parametros':    GESTAO,
+  '/horas':                  EQUIPA,
+  // Pessoas — a lista de colaboradores é da gestão; cada um abre a sua ficha
+  // (ver colaboradores/[id]) e vê só as suas férias
+  '/colaboradores': GESTAO,
   '/ferias':        ['management', 'director', 'employee', 'intern'],
-  '/remuneracao':   ['management'],
-  '/objetivos':      ['management', 'director', 'employee'],
-  '/meus-objetivos': ['management', 'director', 'employee'],
-  '/produtividade':  ['management', 'director'],
-  '/avaliacoes':     ['management', 'director', 'employee', 'intern'],
-  '/financeiro':    ['management'],
-  '/orcamento':     ['management'],
-  '/dados':           ['management'],
-  '/sistema/devlog':  ['management', 'director', 'employee'],
+  '/remuneracao':   GESTAO,
+  // Performance
+  '/objetivos':      GESTAO,
+  '/meus-objetivos': GESTAO,
+  '/produtividade':  GESTAO,
+  '/avaliacoes':     GESTAO,
+  // Sistema
+  '/dados':           GESTAO,
+  '/sistema/devlog':  GESTAO,
   '/perfil':        ['management', 'director', 'employee', 'intern'],
+}
+
+/** Gestão: vê e decide sobre toda a gente (master e admin incluídos). */
+export function isGestao(role: UserRole): boolean {
+  return SUPER.has(role) || role === 'management'
 }
 
 export function canAccess(role: UserRole, path: string): boolean {
@@ -46,7 +63,7 @@ export function canAccess(role: UserRole, path: string): boolean {
 
 /** Vê e escreve as avaliações de toda a gente; as outras pessoas só veem as suas, depois de submetidas. */
 export function canManageReviews(role: UserRole): boolean {
-  return isFullAccess(role) || role === 'management' || role === 'director'
+  return isGestao(role)
 }
 
 // ─── Role metadata ────────────────────────────────────────────────────────
