@@ -24,6 +24,7 @@ export const NAV_ACCESS: Record<string, UserRole[]> = {
   '/':              GESTAO,
   '/financeiro':    GESTAO,
   '/orcamento':     GESTAO,
+  '/consignacoes':  GESTAO,
   // Produção — a equipa usa no dia a dia. Os parâmetros têm o custo/hora de
   // cada pessoa (vem dos salários) e mexem em todos os preços: só a gestão.
   '/producao':               EQUIPA,
