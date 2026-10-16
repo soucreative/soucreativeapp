@@ -165,6 +165,7 @@ export interface ResultadoPeca {
   consumos: Record<string, number>; // id do consumível → quantidade, já com desperdício
   maquinaMin: number;
   operadorMin: number;
+  designerMin: number; // por peça, só com nomes individuais
   avisos: string[];
 }
 
@@ -255,7 +256,15 @@ export function calcularPeca(params: Parametros, a: Aplicacao, emParalelo = 1): 
 
   for (const id of Object.keys(consumos)) consumos[id] *= 1 + pt.desperdicioPct;
 
-  return { areaCm2: area, pontos, consumos, maquinaMin, operadorMin, avisos };
+  // Nomes individuais: cada peça tem o seu ficheiro, a preparar e a carregar
+  let designerMin = 0;
+  if (a.nomesIndividuais) {
+    const n = params.nomes ?? { designerMin: 1, operadorMin: 0.5 };
+    designerMin = n.designerMin;
+    operadorMin += n.operadorMin;
+  }
+
+  return { areaCm2: area, pontos, consumos, maquinaMin, operadorMin, designerMin, avisos };
 }
 
 function custoConsumos(params: Parametros, consumos: Record<string, number>): number {
@@ -279,6 +288,7 @@ export interface ResultadoAplicacao {
   custoConsumiveis: number;
   custoMaquina: number;
   custoOperador: number;
+  custoDesigner: number;
   vendaPeca: number;
   vendaPecaSemMinimo: number;
   aplicouMinimo: boolean;
@@ -314,11 +324,14 @@ export function calcularAplicacao(
   const custoConsumiveis = custoConsumos(params, peca.consumos);
   const custoMaquina = (peca.maquinaMin / 60) * custoHoraMaq;
   const custoOperador = (peca.operadorMin / 60) * cOp;
+  const custoDesigner = (peca.designerMin / 60) * cDes;
 
   // Consumível e máquina levam a margem de personalização; a mão de obra
   // vende-se ao preço/hora, que já tem a margem dentro.
   const vendaPecaSemMinimo =
-    ((custoConsumiveis + custoMaquina) / (1 - tc.margemPersonalizacao) + (peca.operadorMin / 60) * pvOp) *
+    ((custoConsumiveis + custoMaquina) / (1 - tc.margemPersonalizacao) +
+      (peca.operadorMin / 60) * pvOp +
+      (peca.designerMin / 60) * pvDes) *
     (1 - esc.descontoPersonalizacao);
   const vendaPeca = Math.max(vendaPecaSemMinimo, pt.minimoPorPeca);
 
@@ -337,6 +350,7 @@ export function calcularAplicacao(
     custoConsumiveis,
     custoMaquina,
     custoOperador,
+    custoDesigner,
     vendaPeca,
     vendaPecaSemMinimo,
     aplicouMinimo: vendaPeca > vendaPecaSemMinimo,
@@ -353,6 +367,8 @@ export function calcularAplicacao(
 export interface ResultadoLinha {
   linha: LinhaOrcamento;
   qtdFaturada: number;
+  qtdEscalao: number; // a que define o escalão: lote + peças anteriores
+  setupRepartido: boolean; // o setup do lote está repartido pelas suas linhas
   escalao: Escalao;
   aplicacoes: ResultadoAplicacao[];
   vendaArtigoUn: number;
@@ -371,6 +387,7 @@ export function calcularLinha(
   linha: LinhaOrcamento,
   tipoCliente: TipoCliente,
   cobrarPortes: boolean,
+  lote: { quantidade?: number; fracaoSetup?: number } = {},
 ): ResultadoLinha {
   const tc = tipoClienteDe(params, tipoCliente);
   const avisos: string[] = [];
@@ -383,8 +400,24 @@ export function calcularLinha(
       `Acima de ${params.limiteSubcontratar} un. As máquinas são para séries pequenas e médias: pedir preço a um fornecedor.`,
     );
   }
-  const escalao = escalaoDe(params, qtdFaturada);
-  const aplicacoes = linha.aplicacoes.map((a) => calcularAplicacao(params, a, tipoCliente, qtdFaturada));
+  // O escalão conta o lote inteiro (variantes do mesmo trabalho) e as peças
+  // já encomendadas antes. O setup é um só para o lote e reparte-se pelas
+  // linhas na proporção da quantidade, para a mesma peça ter o mesmo preço.
+  const qtdEscalao = (lote.quantidade ?? qtdFaturada) + Math.max(0, linha.pecasAnteriores ?? 0);
+  const escalao = escalaoDe(params, qtdEscalao);
+  const fracao = lote.fracaoSetup ?? 1;
+  const aplicacoes = linha.aplicacoes.map((a) => {
+    const r = calcularAplicacao(params, a, tipoCliente, qtdEscalao);
+    return fracao === 1
+      ? r
+      : {
+          ...r,
+          setupDesignerMin: r.setupDesignerMin * fracao,
+          setupOperadorMin: r.setupOperadorMin * fracao,
+          custoSetup: r.custoSetup * fracao,
+          vendaSetup: r.vendaSetup * fracao,
+        };
+  });
   for (const r of aplicacoes) avisos.push(...r.peca.avisos.map((t) => `${NOME_TECNICA[r.aplicacao.tecnica]}: ${t}`));
 
   const vendaArtigoUn = linha.artigoDoCliente ? 0 : linha.custoArtigo / (1 - tc.margemProduto);
@@ -398,7 +431,7 @@ export function calcularLinha(
   const manual = linha.precoUnitManual;
   const total = manual != null && manual > 0 ? manual * qtdFaturada : totalSugerido;
 
-  const custoPeca = aplicacoes.reduce((s, r) => s + r.custoConsumiveis + r.custoMaquina + r.custoOperador, 0);
+  const custoPeca = aplicacoes.reduce((s, r) => s + r.custoConsumiveis + r.custoMaquina + r.custoOperador + r.custoDesigner, 0);
   const custo =
     (linha.artigoDoCliente ? 0 : linha.custoArtigo * qtdFaturada) +
     qtdFaturada * custoPeca +
@@ -410,6 +443,8 @@ export function calcularLinha(
   return {
     linha,
     qtdFaturada,
+    qtdEscalao,
+    setupRepartido: fracao < 1,
     escalao,
     aplicacoes,
     vendaArtigoUn,
@@ -472,10 +507,19 @@ export function calcularOrcamento(params: Parametros, o: Orcamento): ResultadoOr
   const fornecedoresComPortes = new Set<string>();
   const chaveF = (l: LinhaOrcamento) => l.fornecedor.trim().toLowerCase();
   const porId = new Map<string, ResultadoLinha>();
+  // Lotes: só nas linhas normais (as opções são alternativas, não variantes)
+  const chaveLote = (l: LinhaOrcamento) => l.lote?.trim().toLowerCase() || "";
+  const qtdLote = new Map<string, number>();
+  for (const l of o.linhas.filter((x) => !x.grupoOpcao && chaveLote(x))) {
+    qtdLote.set(chaveLote(l), (qtdLote.get(chaveLote(l)) ?? 0) + l.quantidade);
+  }
   for (const l of o.linhas.filter((x) => !x.grupoOpcao)) {
     const cobrar = !fornecedoresComPortes.has(chaveF(l));
     if (l.portes > 0 && !l.artigoDoCliente) fornecedoresComPortes.add(chaveF(l));
-    porId.set(l.id, calcularLinha(params, l, o.tipoCliente, cobrar));
+    const k = chaveLote(l);
+    const total = k ? qtdLote.get(k) ?? 0 : 0;
+    const lote = k && total > 0 ? { quantidade: total, fracaoSetup: l.quantidade / total } : {};
+    porId.set(l.id, calcularLinha(params, l, o.tipoCliente, cobrar, lote));
   }
   for (const l of o.linhas.filter((x) => x.grupoOpcao)) {
     porId.set(l.id, calcularLinha(params, l, o.tipoCliente, !fornecedoresComPortes.has(chaveF(l))));
@@ -532,7 +576,7 @@ export function calcularOrcamento(params: Parametros, o: Orcamento): ResultadoOr
         minutosMaquina[id] = (minutosMaquina[id] ?? 0) + (r.peca.maquinaMin * l.qtdFaturada) / r.maquinasIds.length;
       }
       minutosOperador += r.peca.operadorMin * l.qtdFaturada + r.setupOperadorMin;
-      minutosDesigner += r.setupDesignerMin;
+      minutosDesigner += r.setupDesignerMin + r.peca.designerMin * l.qtdFaturada;
       for (const [id, q] of Object.entries(r.peca.consumos)) consumos[id] = (consumos[id] ?? 0) + q * l.qtdFaturada;
       if (paramTecnica(params, r.aplicacao.tecnica).estimativa) usaEstimativas = true;
       if (r.maquinasIds.some((id) => params.maquinas.find((m) => m.id === id)?.estimativa)) usaEstimativas = true;

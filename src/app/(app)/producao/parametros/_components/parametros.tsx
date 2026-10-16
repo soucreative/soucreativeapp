@@ -207,6 +207,30 @@ export default function EditorParametros() {
           </p>
         </Seccao>
 
+        <Seccao titulo="Nomes individuais">
+          <div className="grid max-w-md grid-cols-2 gap-3">
+            <Rotulado rotulo="Designer por peça" ajuda="Preparar e verificar cada nome">
+              <CampoNumero
+                valor={p.nomes?.designerMin}
+                sufixo="min"
+                estimativa
+                aoMudar={(n) => mudar((d) => void (d.nomes = { ...(d.nomes ?? { designerMin: 1, operadorMin: 0.5 }), designerMin: n ?? 0 }))}
+              />
+            </Rotulado>
+            <Rotulado rotulo="Operador por peça" ajuda="Trocar o ficheiro e posicionar">
+              <CampoNumero
+                valor={p.nomes?.operadorMin}
+                sufixo="min"
+                estimativa
+                aoMudar={(n) => mudar((d) => void (d.nomes = { ...(d.nomes ?? { designerMin: 1, operadorMin: 0.5 }), operadorMin: n ?? 0 }))}
+              />
+            </Rotulado>
+          </div>
+          <p className="mt-2 text-xs text-cinza">
+            Soma-se a cada peça das técnicas marcadas com &quot;Nomes individuais&quot; no orçamento.
+          </p>
+        </Seccao>
+
         <Seccao titulo="Capacidade diária (pipeline)">
           <div className="grid max-w-md grid-cols-2 gap-3">
             <Rotulado rotulo="Horas de máquina por dia útil" ajuda="Por cabeça, em cada máquina">

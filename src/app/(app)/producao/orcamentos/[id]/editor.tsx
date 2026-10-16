@@ -494,6 +494,21 @@ function EditorLinha({
         <div className="flex items-end pb-2">
           <Interruptor ligado={l.artigoDoCliente} aoMudar={(v) => set({ artigoDoCliente: v })} rotulo="O cliente traz a peça" />
         </div>
+        {!l.grupoOpcao && (
+          <div className="lg:col-span-2">
+            <Rotulado rotulo="Lote (variantes do mesmo trabalho)" ajuda="Mesmo nome = somam para o escalão e o setup paga-se uma vez">
+              <input
+                className="campo"
+                value={l.lote ?? ""}
+                placeholder="ex.: Bonés escola"
+                onChange={(e) => set({ lote: e.target.value || undefined })}
+              />
+            </Rotulado>
+          </div>
+        )}
+        <Rotulado rotulo="Peças já encomendadas" ajuda="De encomendas anteriores; contam para o escalão">
+          <CampoNumero valor={l.pecasAnteriores} vazio min={0} aoMudar={(n) => set({ pecasAnteriores: n ? Math.round(n) : undefined })} />
+        </Rotulado>
       </div>
 
       <div className="mt-4 space-y-3">
@@ -516,7 +531,17 @@ function EditorLinha({
 
       {r && (
         <div className="mt-4 grid gap-3 border-t border-linha pt-4 sm:grid-cols-2 lg:grid-cols-5">
-          <Dado nome="Qtd faturada" valor={numero(r.qtdFaturada)} detalhe={`escalão ${r.escalao.nome}`} />
+          <Dado
+            nome="Qtd faturada"
+            valor={numero(r.qtdFaturada)}
+            detalhe={[
+              `escalão ${r.escalao.nome}`,
+              r.qtdEscalao !== r.qtdFaturada ? `conta como ${numero(r.qtdEscalao)} peças` : "",
+              r.setupRepartido ? "setup repartido pelo lote" : "",
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          />
           <Dado nome="Preço sugerido/un" valor={euros(r.precoUnitSugerido)} />
           <Rotulado rotulo="Preço praticado/un" ajuda={l.precoUnitManual ? `${percent(l.precoUnitManual / r.precoUnitSugerido - 1)} vs sugerido` : "vazio = sugerido"}>
             <CampoNumero valor={l.precoUnitManual} aoMudar={(n) => set({ precoUnitManual: n })} sufixo="€" min={0} vazio />

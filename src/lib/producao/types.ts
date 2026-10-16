@@ -159,6 +159,8 @@ export interface Parametros {
   // Famílias de produtos do TOC que entram no catálogo de artigos (nomes)
   tocFamiliasArtigos?: string[];
   tocUltimaSincronizacao?: string;
+  // Minutos a mais por peça quando cada peça leva um nome diferente
+  nomes?: { designerMin: number; operadorMin: number };
   // Horas de trabalho por dia útil, para o pipeline calcular datas previstas
   capacidade: { horasDiaMaquina: number; horasDiaPessoa: number };
   iva: number;
@@ -206,6 +208,8 @@ export interface Aplicacao {
   complexidade?: "simples" | "medio" | "complexo";
   // Quantas máquinas bordam este trabalho ao mesmo tempo. Vazio = automático.
   maquinasParalelo?: number;
+  // Cada peça leva um texto diferente (nomes, números): trabalho a mais por peça
+  nomesIndividuais?: boolean;
   // Setup: as três perguntas
   jaProduzido: boolean;
   arteCliente: boolean;
@@ -224,6 +228,11 @@ export interface LinhaOrcamento {
   artigoDoCliente: boolean; // o cliente traz a peça
   aplicacoes: Aplicacao[];
   precoUnitManual?: number;
+  // Linhas com o mesmo lote são o mesmo trabalho em variantes (cores, tamanhos):
+  // somam as quantidades para o escalão e pagam o setup uma vez.
+  lote?: string;
+  // Peças já encomendadas deste trabalho noutras encomendas: contam para o escalão
+  pecasAnteriores?: number;
   // Linhas com o mesmo grupo são alternativas: o cliente escolhe uma.
   // Vazio = linha normal, que conta sempre.
   grupoOpcao?: string;

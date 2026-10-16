@@ -162,6 +162,14 @@ export function AplicacaoEditor({
         </div>
       )}
 
+      <div className="mt-3">
+        <Interruptor
+          ligado={!!a.nomesIndividuais}
+          aoMudar={(v) => set({ nomesIndividuais: v || undefined })}
+          rotulo="Nomes individuais (cada peça com um texto diferente)"
+        />
+      </div>
+
       <div className="mt-3 grid gap-2 border-t border-linha pt-3 sm:grid-cols-3">
         <Interruptor ligado={a.jaProduzido} aoMudar={(v) => set({ jaProduzido: v })} rotulo="1. Já produzimos este grafismo nesta peça?" />
         <Interruptor ligado={a.arteCliente} aoMudar={(v) => set({ arteCliente: v })} rotulo="2. A arte vem pronta do cliente?" />
