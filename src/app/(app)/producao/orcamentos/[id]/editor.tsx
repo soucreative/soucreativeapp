@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { AplicacaoEditor, novaAplicacao } from "@/app/(app)/producao/_components/aplicacao-editor";
 import { EstadoGravacao } from "@/app/(app)/producao/_components/estado-gravacao";
+import { SeletorArtigo } from "@/app/(app)/producao/_components/seletor-artigo";
 import { Avisos, CampoNumero, EtiquetaEstimativa, Interruptor, Rotulado } from "@/app/(app)/producao/_components/campos";
 import { calcularOrcamento, type ResultadoLinha } from "@/lib/producao/engine";
 import { ESTADOS, MOTIVOS_PERDA } from "@/lib/producao/estados";
@@ -398,14 +399,11 @@ function EditorLinha({
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
         <div className="lg:col-span-3">
           <Rotulado rotulo="Artigo do catálogo">
-            <select className="campo" value={l.artigoId ?? ""} onChange={(e) => escolherArtigo(e.target.value)}>
-              <option value="">— outro / escrever à mão —</option>
-              {artigos.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.categoria} · {a.nome}
-                </option>
-              ))}
-            </select>
+            <SeletorArtigo
+              artigos={artigos}
+              escolhido={artigos.find((a) => a.id === l.artigoId)}
+              aoEscolher={(id) => escolherArtigo(id ?? "")}
+            />
           </Rotulado>
         </div>
         <div className="lg:col-span-3">
