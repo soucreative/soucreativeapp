@@ -126,12 +126,13 @@ export default function Documento() {
                 <th className="py-2 pr-2 font-medium">Artigo</th>
                 <th className="py-2 px-2 text-right font-medium">Qtd</th>
                 <th className="py-2 px-2 text-right font-medium">Preço/un</th>
-                <th className="py-2 pl-2 text-right font-medium">Total</th>
+                <th className="py-2 px-2 text-right font-medium">Total s/ IVA</th>
+                <th className="py-2 pl-2 text-right font-medium">Total c/ IVA</th>
               </tr>
             </thead>
             <tbody>
               {linhasTabela.map((l) => (
-                <LinhaDoc key={l.linha.id} l={l} precoUnit={precoUnit(l)} precoTabela={precoTabela(l)} total={totalLinha(l)} imagem={imagemDe(l)} alternativas={alternativasDe(l)} reparticao={reparticaoDe(l)} pvp={o.tipoCliente === "parceiro" ? l.linha.pvpRecomendado : undefined} />
+                <LinhaDoc key={l.linha.id} l={l} iva={p.iva} precoUnit={precoUnit(l)} precoTabela={precoTabela(l)} total={totalLinha(l)} imagem={imagemDe(l)} alternativas={alternativasDe(l)} reparticao={reparticaoDe(l)} pvp={o.tipoCliente === "parceiro" ? l.linha.pvpRecomendado : undefined} />
               ))}
               {r.vendaCriacao > 0 && (
                 <tr className="border-b border-linha">
@@ -141,7 +142,8 @@ export default function Documento() {
                   </td>
                   <td />
                   <td />
-                  <td className="py-3 pl-2 text-right tabular-nums">{euros(r.vendaCriacao * fator)}</td>
+                  <td className="py-3 px-2 text-right tabular-nums">{euros(r.vendaCriacao * fator)}</td>
+                  <td className="py-3 pl-2 text-right tabular-nums">{euros(r.vendaCriacao * fator * (1 + p.iva))}</td>
                 </tr>
               )}
             </tbody>
@@ -157,7 +159,8 @@ export default function Documento() {
                   <th className="py-2 pr-2 font-medium">Opção</th>
                   <th className="py-2 px-2 text-right font-medium">Qtd</th>
                   <th className="py-2 px-2 text-right font-medium">Preço/un</th>
-                  <th className="py-2 px-2 text-right font-medium">Total da opção</th>
+                  <th className="py-2 px-2 text-right font-medium">Total s/ IVA</th>
+                  <th className="py-2 pl-2 text-right font-medium">Total c/ IVA</th>
                 </tr>
               </thead>
               <tbody>
@@ -166,6 +169,7 @@ export default function Documento() {
                   .map((l, i) => {
                     return (
                       <LinhaDoc
+                        iva={p.iva}
                         key={l.linha.id}
                         l={l}
                         rotulo={`Opção ${String.fromCharCode(65 + i)}`}
@@ -281,7 +285,7 @@ function LinhaDoc({
   precoUnit,
   precoTabela,
   total,
-  totalOrcamento,
+  iva,
   imagem,
   alternativas,
   reparticao,
@@ -292,7 +296,7 @@ function LinhaDoc({
   precoUnit: number;
   precoTabela?: number;
   total: number;
-  totalOrcamento?: number;
+  iva: number;
   imagem?: string;
   alternativas?: { quantidade: number; precoUnit: number; total: number }[];
   reparticao?: string;
@@ -341,7 +345,7 @@ function LinhaDoc({
         {euros(precoUnit)}
       </td>
       <td className="py-3 px-2 text-right tabular-nums">{euros(total)}</td>
-      {totalOrcamento != null && <td className="py-3 pl-2 text-right font-medium tabular-nums">{euros(totalOrcamento)}</td>}
+      <td className="py-3 pl-2 text-right tabular-nums">{euros(total * (1 + iva))}</td>
     </tr>
   );
 }
