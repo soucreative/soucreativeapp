@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { Titulo } from "@/app/(app)/producao/_components/campos";
 import { EstadoGravacao } from "@/app/(app)/producao/_components/estado-gravacao";
 import { etapaDe, ETAPAS, ordenarFila, planear, preverNovo, type Planeado } from "@/lib/producao/agenda";
-import { calcularOrcamento, NOME_TECNICA } from "@/lib/producao/engine";
+import { calcularOrcamento, NOME_TECNICA, totalParaListas } from "@/lib/producao/engine";
 import { dataPt, euros, horasMin } from "@/lib/producao/format";
 import { atualizarProducao, moverEtapa, useDados } from "@/app/(app)/producao/_lib/store";
 import type { EtapaProducao, Orcamento } from "@/lib/producao/types";
@@ -152,8 +152,10 @@ function Linha({
   const anterior = ETAPAS[i - 1];
   const seguinte = ETAPAS[i + 1];
   const prazo = o.producao?.prazo;
-  const pecas = o.linhas.reduce((s, l) => s + l.quantidade, 0);
-  const tecnicas = [...new Set(o.linhas.flatMap((l) => l.aplicacoes.map((a) => NOME_TECNICA[a.tecnica].split(" (")[0])))];
+  // Só conta a opção escolhida pelo cliente, não as alternativas
+  const linhas = o.linhas.filter((l) => !l.grupoOpcao || o.opcaoEscolhida?.[l.grupoOpcao] === l.id);
+  const pecas = linhas.reduce((s, l) => s + l.quantidade, 0);
+  const tecnicas = [...new Set(linhas.flatMap((l) => l.aplicacoes.map((a) => NOME_TECNICA[a.tecnica].split(" (")[0])))];
   const minutosMaquina = Object.values(r.minutosMaquina).reduce((s, m) => s + m, 0);
   // Os controlos dentro da linha não a abrem nem fecham
   const parar = (e: React.SyntheticEvent) => e.stopPropagation();
@@ -258,7 +260,7 @@ function Linha({
               <div>
                 <div className="rotulo">Artigos</div>
                 <ul className="space-y-0.5 text-sm">
-                  {o.linhas.map((l) => (
+                  {linhas.map((l) => (
                     <li key={l.id}>
                       <b>{l.quantidade}×</b> {l.descricao || "artigo"}
                       <ul className="ml-4 text-xs text-cinza">
@@ -404,7 +406,7 @@ function Arquivo() {
                 <td className={cumprido === false ? "text-alerta" : "text-verde"}>
                   {cumprido == null ? "—" : cumprido ? "sim" : "atrasado"}
                 </td>
-                <td className="num">{euros(o.congelado?.total ?? calcularOrcamento(dados.parametros, o).total)}</td>
+                <td className="num">{euros(totalParaListas(o, calcularOrcamento(dados.parametros, o)))}</td>
                 <td>
                   <button className="text-xs text-cinza hover:text-verde" onClick={() => void moverEtapa(o.id, "pronto")}>
                     reabrir

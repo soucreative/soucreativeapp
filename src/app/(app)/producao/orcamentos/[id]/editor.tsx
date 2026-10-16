@@ -51,10 +51,21 @@ function Editor({ o }: { o: Orcamento }) {
   const cliente = dados.clientes.find((c) => c.id === o.clienteId);
 
   const mudarEstado = (estado: EstadoOrcamento, extra: Partial<Orcamento> = {}) => {
-    const congelado =
+    let congelado =
       estado === "rascunho"
         ? undefined
-        : (o.congelado ?? { total: r.total, totalComIva: r.totalComIva, margem: r.margem, em: new Date().toISOString() });
+        : (o.congelado ?? {
+            total: r.total,
+            totalComIva: r.totalComIva,
+            margem: r.margem,
+            em: new Date().toISOString(),
+            linhas: Object.fromEntries(r.linhas.map((l) => [l.linha.id, l.total])),
+          });
+    // Com opções, o total fixado passa a ser o da opção que o cliente escolheu
+    if (estado === "ganho" && extra.opcaoEscolhida && congelado) {
+      const r2 = calcularOrcamento(p, { ...o, ...extra, estado: "ganho", congelado });
+      congelado = { ...congelado, total: r2.total, totalComIva: r2.totalComIva, margem: r2.margem };
+    }
     // Ao ganhar, o trabalho entra no pipeline por iniciar, no fim da fila
     const producao = estado === "ganho" && !o.producao ? { etapa: "por_iniciar" as const, ordem: Date.now() } : o.producao;
     set({ estado, congelado, producao, ...extra });
@@ -120,7 +131,7 @@ function Editor({ o }: { o: Orcamento }) {
         </div>
       </div>
 
-      <BarraEstado o={o} mudarEstado={mudarEstado} />
+      <BarraEstado o={o} r={r} mudarEstado={mudarEstado} />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
         <fieldset disabled={!editavel} className="min-w-0 space-y-6">
@@ -212,11 +223,16 @@ function Editor({ o }: { o: Orcamento }) {
 
 function BarraEstado({
   o,
+  r,
   mudarEstado,
 }: {
   o: Orcamento;
+  r: ReturnType<typeof calcularOrcamento>;
   mudarEstado: (e: EstadoOrcamento, extra?: Partial<Orcamento>) => void;
 }) {
+  const [aGanhar, setAGanhar] = useState(false);
+  const [escolha, setEscolha] = useState<Record<string, string>>(o.opcaoEscolhida ?? {});
+  const faltaEscolher = r.grupos.some((g) => !escolha[g.grupo]);
   const [aPerder, setAPerder] = useState(false);
   const [motivo, setMotivo] = useState(MOTIVOS_PERDA[0]);
 
@@ -231,10 +247,43 @@ function BarraEstado({
           <span className="text-xs text-cinza">O preço fica fixo a partir daqui.</span>
         </>
       )}
-      {o.estado === "enviado" && !aPerder && (
+      {o.estado === "enviado" && aGanhar && (
+        <>
+          <span className="text-cinza">Que opção escolheu o cliente?</span>
+          {r.grupos.map((g) => (
+            <select
+              key={g.grupo}
+              className="campo w-auto"
+              value={escolha[g.grupo] ?? ""}
+              onChange={(e) => setEscolha({ ...escolha, [g.grupo]: e.target.value })}
+            >
+              <option value="">{g.grupo}: escolher…</option>
+              {g.opcoes.map((x) => (
+                <option key={x.linhaId} value={x.linhaId}>
+                  {x.descricao || "opção"} · {euros(x.total)}
+                </option>
+              ))}
+            </select>
+          ))}
+          <button
+            className="botao-principal"
+            disabled={faltaEscolher}
+            onClick={() => {
+              mudarEstado("ganho", { opcaoEscolhida: escolha });
+              setAGanhar(false);
+            }}
+          >
+            Confirmar ganho
+          </button>
+          <button className="botao-secundario" onClick={() => setAGanhar(false)}>
+            Cancelar
+          </button>
+        </>
+      )}
+      {o.estado === "enviado" && !aPerder && !aGanhar && (
         <>
           <span className="mr-2 text-cinza">Resposta do cliente:</span>
-          <button className="botao-principal" onClick={() => mudarEstado("ganho")}>
+          <button className="botao-principal" onClick={() => (r.grupos.length ? setAGanhar(true) : mudarEstado("ganho"))}>
             Ganho
           </button>
           <button className="botao-secundario" onClick={() => setAPerder(true)}>
@@ -366,7 +415,7 @@ function EditorLinha({
 }: {
   indice: number;
   linha: LinhaOrcamento;
-  r?: ResultadoLinha;
+  r?: ResultadoLinha & { incluida: boolean };
   artigos: Artigo[];
   aoMudar: (fn: (l: LinhaOrcamento) => LinhaOrcamento) => void;
   aoRemover: () => void;
@@ -390,7 +439,23 @@ function EditorLinha({
   return (
     <section className="cartao">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="titulo text-lg text-verde">Artigo {indice + 1}</h2>
+        <div className="flex flex-wrap items-center gap-3">
+          <h2 className="titulo text-lg text-verde">Artigo {indice + 1}</h2>
+          <Interruptor
+            ligado={!!l.grupoOpcao}
+            aoMudar={(v) => set({ grupoOpcao: v ? "Opção" : undefined })}
+            rotulo="É uma opção (o cliente escolhe uma)"
+          />
+          {l.grupoOpcao && (
+            <input
+              className="campo w-40 py-1 text-xs"
+              value={l.grupoOpcao}
+              onChange={(e) => set({ grupoOpcao: e.target.value || "Opção" })}
+              title="Artigos com o mesmo nome de grupo são alternativas entre si"
+            />
+          )}
+          {l.grupoOpcao && r && !r.incluida && <span className="etiqueta bg-beige-claro text-mostarda">não conta no total</span>}
+        </div>
         <button className="botao-perigo" onClick={aoRemover}>
           Remover artigo
         </button>
@@ -483,12 +548,25 @@ function Resumo({ o, r }: { o: Orcamento; r: ReturnType<typeof calcularOrcamento
     <>
       <div className="cartao">
         <h2 className="titulo mb-3 text-lg text-verde">Resumo</h2>
+        {r.grupos.map((g) => (
+          <div key={g.grupo} className="mb-3 rounded-md bg-beige-claro/60 p-2 text-sm">
+            <div className="mb-1 text-xs font-medium text-mostarda">{g.grupo}: o cliente escolhe uma</div>
+            {g.opcoes.map((x) => (
+              <div key={x.linhaId} className={`flex justify-between gap-2 ${g.escolhida === x.linhaId ? "font-semibold text-verde" : ""}`}>
+                <span className="truncate">{x.descricao || "opção"}</span>
+                <span className="tabular-nums" title="Total do orçamento com esta opção, sem IVA">
+                  {euros(x.totalComBase)}
+                </span>
+              </div>
+            ))}
+          </div>
+        ))}
         <dl className="space-y-1.5 text-sm">
           <Linha nome="Artigos e personalização" valor={euros(r.subtotal - r.vendaCriacao)} />
           {r.vendaCriacao > 0 && <Linha nome="Criação" valor={euros(r.vendaCriacao)} />}
           {r.desconto > 0 && <Linha nome="Desconto por potencial" valor={`− ${euros(r.desconto)}`} />}
           <div className="my-2 border-t border-linha" />
-          <Linha nome="Total s/ IVA" valor={euros(r.total)} forte />
+          <Linha nome={r.opcoesPorEscolher ? "Total s/ IVA, sem opções" : "Total s/ IVA"} valor={euros(r.total)} forte />
           <Linha nome={`IVA ${percent(p.iva)}`} valor={euros(r.iva)} />
           <Linha nome="Total c/ IVA" valor={euros(r.totalComIva)} forte />
           <div className="my-2 border-t border-linha" />

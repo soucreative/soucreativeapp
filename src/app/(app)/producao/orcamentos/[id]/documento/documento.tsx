@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMemo } from "react";
-import { calcularOrcamento, NOME_TECNICA } from "@/lib/producao/engine";
+import { calcularOrcamento, NOME_TECNICA, type ResultadoLinha } from "@/lib/producao/engine";
 import { dataPt, euros, numero, percent } from "@/lib/producao/format";
 import { useCarregado, useDados } from "@/app/(app)/producao/_lib/store";
 import type { Aplicacao } from "@/lib/producao/types";
@@ -29,8 +29,16 @@ export default function Documento() {
 
   const cliente = dados.clientes.find((c) => c.id === o.clienteId);
   const e = p.empresa;
-  // Depois de enviado, o documento mostra sempre o preço fixado.
-  const fator = o.congelado && o.estado !== "rascunho" && r.total > 0 ? o.congelado.total / r.total : 1;
+  // Depois de enviado, o documento mostra sempre o preço fixado. Os orçamentos
+  // novos guardam o total de cada linha (o motor já os usa); nos antigos só há
+  // o total, e os preços escalam-se por ele.
+  const fixados = o.estado !== "rascunho" ? o.congelado?.linhas : undefined;
+  const fator = !fixados && o.congelado && o.estado !== "rascunho" && r.total > 0 ? o.congelado.total / r.total : 1;
+  const totalLinha = (l: (typeof r.linhas)[number]) => (fixados?.[l.linha.id] ?? l.total) * fator;
+  const precoUnit = (l: (typeof r.linhas)[number]) => (l.qtdFaturada > 0 ? totalLinha(l) / l.qtdFaturada : 0);
+  // Linhas que entram na tabela: as normais e, depois de ganho, a opção escolhida
+  const linhasTabela = r.linhas.filter((l) => l.incluida);
+  const gruposAbertos = r.grupos.filter((g) => !g.escolhida);
   const validade = new Date(o.data);
   validade.setDate(validade.getDate() + p.validadeDias);
 
@@ -78,71 +86,109 @@ export default function Documento() {
           </div>
         </div>
 
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b-2 border-verde text-left text-xs text-cinza">
-              <th className="py-2 pr-2 font-medium">Artigo</th>
-              <th className="py-2 px-2 text-right font-medium">Qtd</th>
-              <th className="py-2 px-2 text-right font-medium">Preço/un</th>
-              <th className="py-2 pl-2 text-right font-medium">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {r.linhas.map((l) => (
-              <tr key={l.linha.id} className="break-inside-avoid border-b border-linha">
-                <td className="py-3 pr-2">
-                  <div className="font-medium">{l.linha.descricao || "Artigo"}</div>
-                  {l.linha.artigoDoCliente && <div className="text-xs text-cinza">Peça fornecida pelo cliente</div>}
-                  {l.aplicacoes.map((a) => (
-                    <div key={a.aplicacao.id} className="text-xs text-cinza">
-                      {descreverAplicacao(a.aplicacao)}
-                    </div>
-                  ))}
-                </td>
-                <td className="py-3 px-2 text-right tabular-nums">{numero(l.qtdFaturada)}</td>
-                <td className="py-3 px-2 text-right tabular-nums">{euros(l.precoUnit * fator)}</td>
-                <td className="py-3 pl-2 text-right tabular-nums">{euros(l.total * fator)}</td>
+        {(linhasTabela.length > 0 || r.vendaCriacao > 0) && (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b-2 border-verde text-left text-xs text-cinza">
+                <th className="py-2 pr-2 font-medium">Artigo</th>
+                <th className="py-2 px-2 text-right font-medium">Qtd</th>
+                <th className="py-2 px-2 text-right font-medium">Preço/un</th>
+                <th className="py-2 pl-2 text-right font-medium">Total</th>
               </tr>
-            ))}
-            {r.vendaCriacao > 0 && (
-              <tr className="border-b border-linha">
-                <td className="py-3 pr-2">
-                  <div className="font-medium">Criação gráfica</div>
-                  <div className="text-xs text-cinza">{numero(o.horasCriacao)} h de design</div>
-                </td>
-                <td />
-                <td />
-                <td className="py-3 pl-2 text-right tabular-nums">{euros(r.vendaCriacao * fator)}</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {linhasTabela.map((l) => (
+                <LinhaDoc key={l.linha.id} l={l} precoUnit={precoUnit(l)} total={totalLinha(l)} />
+              ))}
+              {r.vendaCriacao > 0 && (
+                <tr className="border-b border-linha">
+                  <td className="py-3 pr-2">
+                    <div className="font-medium">Criação gráfica</div>
+                    <div className="text-xs text-cinza">{numero(o.horasCriacao)} h de design</div>
+                  </td>
+                  <td />
+                  <td />
+                  <td className="py-3 pl-2 text-right tabular-nums">{euros(r.vendaCriacao * fator)}</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        )}
+
+        {gruposAbertos.map((g) => (
+          <section key={g.grupo} className="mt-8 break-inside-avoid">
+            <h2 className="mb-1 text-xs uppercase tracking-[0.2em] text-mostarda">{g.grupo} · escolha uma</h2>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b-2 border-mostarda text-left text-xs text-cinza">
+                  <th className="py-2 pr-2 font-medium">Opção</th>
+                  <th className="py-2 px-2 text-right font-medium">Qtd</th>
+                  <th className="py-2 px-2 text-right font-medium">Preço/un</th>
+                  <th className="py-2 px-2 text-right font-medium">Total da opção</th>
+                  {linhasTabela.length > 0 && <th className="py-2 pl-2 text-right font-medium">Total do orçamento</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {r.linhas
+                  .filter((l) => l.linha.grupoOpcao === g.grupo)
+                  .map((l, i) => {
+                    const op = g.opcoes.find((x) => x.linhaId === l.linha.id)!;
+                    return (
+                      <LinhaDoc
+                        key={l.linha.id}
+                        l={l}
+                        rotulo={`Opção ${String.fromCharCode(65 + i)}`}
+                        precoUnit={precoUnit(l)}
+                        total={totalLinha(l)}
+                        totalOrcamento={linhasTabela.length > 0 ? op.totalComBase * fator : undefined}
+                      />
+                    );
+                  })}
+              </tbody>
+            </table>
+            <p className="mt-2 text-xs text-cinza">
+              Valores sem IVA ({percent(p.iva)}).
+              {linhasTabela.length > 0 ? " O total do orçamento junta a opção aos artigos acima." : ""}
+            </p>
+          </section>
+        ))}
 
         <div className="mt-6 ml-auto w-full max-w-xs space-y-1 text-sm">
-          {r.desconto > 0 && (
-            <>
+          {gruposAbertos.length > 0 ? (
+            linhasTabela.length > 0 && (
               <div className="flex justify-between">
-                <span className="text-cinza">Subtotal</span>
-                <span className="tabular-nums">{euros(r.subtotal * fator)}</span>
+                <span className="text-cinza">Total sem as opções, s/ IVA</span>
+                <span className="tabular-nums">{euros(r.total * fator)}</span>
+              </div>
+            )
+          ) : (
+            <>
+              {r.desconto > 0 && (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-cinza">Subtotal</span>
+                    <span className="tabular-nums">{euros(r.subtotal * fator)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-cinza">Desconto {percent(o.descontoPotencialPct)}</span>
+                    <span className="tabular-nums">− {euros(r.desconto * fator)}</span>
+                  </div>
+                </>
+              )}
+              <div className="flex justify-between">
+                <span className="text-cinza">Total s/ IVA</span>
+                <span className="tabular-nums">{euros(r.total * fator)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-cinza">Desconto {percent(o.descontoPotencialPct)}</span>
-                <span className="tabular-nums">− {euros(r.desconto * fator)}</span>
+                <span className="text-cinza">IVA {percent(p.iva)}</span>
+                <span className="tabular-nums">{euros(r.iva * fator)}</span>
+              </div>
+              <div className="flex justify-between border-t-2 border-verde pt-2 text-base font-semibold">
+                <span>Total</span>
+                <span className="tabular-nums">{euros(r.totalComIva * fator)}</span>
               </div>
             </>
           )}
-          <div className="flex justify-between">
-            <span className="text-cinza">Total s/ IVA</span>
-            <span className="tabular-nums">{euros(r.total * fator)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-cinza">IVA {percent(p.iva)}</span>
-            <span className="tabular-nums">{euros(r.iva * fator)}</span>
-          </div>
-          <div className="flex justify-between border-t-2 border-verde pt-2 text-base font-semibold">
-            <span>Total</span>
-            <span className="tabular-nums">{euros(r.totalComIva * fator)}</span>
-          </div>
         </div>
 
         {o.notas && (
@@ -163,5 +209,38 @@ export default function Documento() {
         </footer>
       </article>
     </>
+  );
+}
+
+function LinhaDoc({
+  l,
+  rotulo,
+  precoUnit,
+  total,
+  totalOrcamento,
+}: {
+  l: ResultadoLinha;
+  rotulo?: string;
+  precoUnit: number;
+  total: number;
+  totalOrcamento?: number;
+}) {
+  return (
+    <tr className="break-inside-avoid border-b border-linha">
+      <td className="py-3 pr-2">
+        {rotulo && <div className="text-xs font-medium uppercase tracking-wider text-mostarda">{rotulo}</div>}
+        <div className="font-medium">{l.linha.descricao || "Artigo"}</div>
+        {l.linha.artigoDoCliente && <div className="text-xs text-cinza">Peça fornecida pelo cliente</div>}
+        {l.aplicacoes.map((a) => (
+          <div key={a.aplicacao.id} className="text-xs text-cinza">
+            {descreverAplicacao(a.aplicacao)}
+          </div>
+        ))}
+      </td>
+      <td className="py-3 px-2 text-right tabular-nums">{numero(l.qtdFaturada)}</td>
+      <td className="py-3 px-2 text-right tabular-nums">{euros(precoUnit)}</td>
+      <td className="py-3 px-2 text-right tabular-nums">{euros(total)}</td>
+      {totalOrcamento != null && <td className="py-3 pl-2 text-right font-medium tabular-nums">{euros(totalOrcamento)}</td>}
+    </tr>
   );
 }

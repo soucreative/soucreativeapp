@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Titulo } from "@/app/(app)/producao/_components/campos";
-import { calcularOrcamento } from "@/lib/producao/engine";
+import { calcularOrcamento, totalParaListas } from "@/lib/producao/engine";
 import { euros, percent } from "@/lib/producao/format";
 import { guardarCliente, novoId, useDados } from "@/app/(app)/producao/_lib/store";
 import type { TipoCliente } from "@/lib/producao/types";
@@ -22,7 +22,7 @@ export default function ListaClientes() {
           const valor = (estado: string) =>
             orcs
               .filter((o) => o.estado === estado)
-              .reduce((s, o) => s + (o.congelado?.total ?? calcularOrcamento(dados.parametros, o).total), 0);
+              .reduce((s, o) => s + totalParaListas(o, calcularOrcamento(dados.parametros, o)), 0);
           const ganhos = orcs.filter((o) => o.estado === "ganho").length;
           const perdidos = orcs.filter((o) => o.estado === "perdido").length;
           const ultimo = orcs.map((o) => o.data).sort().at(-1);

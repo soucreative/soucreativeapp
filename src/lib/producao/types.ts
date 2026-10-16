@@ -224,6 +224,9 @@ export interface LinhaOrcamento {
   artigoDoCliente: boolean; // o cliente traz a peça
   aplicacoes: Aplicacao[];
   precoUnitManual?: number;
+  // Linhas com o mesmo grupo são alternativas: o cliente escolhe uma.
+  // Vazio = linha normal, que conta sempre.
+  grupoOpcao?: string;
 }
 
 export interface Orcamento {
@@ -242,7 +245,17 @@ export interface Orcamento {
   linhas: LinhaOrcamento[];
   // Fotografia do cálculo quando sai de rascunho: um orçamento enviado
   // não pode mudar de preço porque alguém mexeu nos parâmetros.
-  congelado?: { total: number; totalComIva: number; margem: number; em: string };
+  congelado?: {
+    total: number;
+    totalComIva: number;
+    margem: number;
+    em: string;
+    // Total de cada linha no momento do envio: o documento e as opções usam
+    // estes valores, para o preço não mudar depois de o cliente o receber
+    linhas?: Record<string, number>;
+  };
+  // Opção escolhida pelo cliente em cada grupo (grupo → id da linha)
+  opcaoEscolhida?: Record<string, string>;
   // Quando a produção termina, o consumo estimado sai do stock.
   produzidoEm?: string;
   producao?: Producao;

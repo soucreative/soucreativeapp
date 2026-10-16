@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Titulo } from "@/app/(app)/producao/_components/campos";
-import { calcularOrcamento } from "@/lib/producao/engine";
+import { calcularOrcamento, totalParaListas } from "@/lib/producao/engine";
 import { ESTADOS } from "@/lib/producao/estados";
 import { dataPt, euros, percent } from "@/lib/producao/format";
 import { criarOrcamento, useDados } from "@/app/(app)/producao/_lib/store";
@@ -24,7 +24,7 @@ export default function ListaOrcamentos() {
         return {
           o,
           cliente,
-          total: o.congelado?.total ?? r.total,
+          total: totalParaListas(o, r),
           margem: o.congelado?.margem ?? r.margem,
         };
       }),

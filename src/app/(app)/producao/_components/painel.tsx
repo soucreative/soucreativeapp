@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 import { Titulo } from "@/app/(app)/producao/_components/campos";
-import { calcularOrcamento } from "@/lib/producao/engine";
+import { calcularOrcamento, totalParaListas } from "@/lib/producao/engine";
 import { ESTADOS } from "@/lib/producao/estados";
 import { etapaDe } from "@/lib/producao/agenda";
 import { dataPt, euros, horasMin, numero, percent } from "@/lib/producao/format";
@@ -19,7 +19,7 @@ export default function PainelProducao() {
 
   const v = useMemo(() => {
     const calc = dados.orcamentos.map((o) => ({ o, r: calcularOrcamento(p, o) }));
-    const total = (x: (typeof calc)[number]) => x.o.congelado?.total ?? x.r.total;
+    const total = (x: (typeof calc)[number]) => totalParaListas(x.o, x.r);
     const porEstado = (e: string) => calc.filter((x) => x.o.estado === e);
 
     const porProduzir = porEstado("ganho").filter((x) => ["por_iniciar", "em_producao"].includes(etapaDe(x.o) ?? ""));

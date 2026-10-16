@@ -426,8 +426,26 @@ export function calcularLinha(
 
 // ── O orçamento inteiro ───────────────────────────────────────────────────
 
+export interface OpcaoResultado {
+  linhaId: string;
+  descricao: string;
+  total: number; // só esta linha
+  totalComBase: number; // o orçamento todo se for esta a escolhida (com desconto, sem IVA)
+}
+
+export interface GrupoOpcoes {
+  grupo: string;
+  opcoes: OpcaoResultado[];
+  escolhida?: string;
+}
+
 export interface ResultadoOrcamento {
-  linhas: ResultadoLinha[];
+  linhas: (ResultadoLinha & { incluida: boolean })[];
+  // Alternativas por grupo; o total só conta as escolhidas
+  grupos: GrupoOpcoes[];
+  opcoesPorEscolher: boolean;
+  // Para listas: o total, ou "desde" (base + opção mais barata) enquanto não houver escolha
+  totalReferencia: number;
   vendaCriacao: number;
   custoCriacao: number;
   subtotal: number;
@@ -449,21 +467,58 @@ export interface ResultadoOrcamento {
 
 export function calcularOrcamento(params: Parametros, o: Orcamento): ResultadoOrcamento {
   const tc = tipoClienteDe(params, o.tipoCliente);
+  // Portes uma vez por fornecedor: primeiro nas linhas normais; cada opção
+  // paga os seus se o fornecedor ainda não estiver nas normais.
   const fornecedoresComPortes = new Set<string>();
-  const linhas = o.linhas.map((l) => {
-    // Portes uma vez por fornecedor em cada orçamento.
-    const chave = l.fornecedor.trim().toLowerCase();
-    const cobrar = !fornecedoresComPortes.has(chave);
-    if (l.portes > 0 && !l.artigoDoCliente) fornecedoresComPortes.add(chave);
-    return calcularLinha(params, l, o.tipoCliente, cobrar);
-  });
+  const chaveF = (l: LinhaOrcamento) => l.fornecedor.trim().toLowerCase();
+  const porId = new Map<string, ResultadoLinha>();
+  for (const l of o.linhas.filter((x) => !x.grupoOpcao)) {
+    const cobrar = !fornecedoresComPortes.has(chaveF(l));
+    if (l.portes > 0 && !l.artigoDoCliente) fornecedoresComPortes.add(chaveF(l));
+    porId.set(l.id, calcularLinha(params, l, o.tipoCliente, cobrar));
+  }
+  for (const l of o.linhas.filter((x) => x.grupoOpcao)) {
+    porId.set(l.id, calcularLinha(params, l, o.tipoCliente, !fornecedoresComPortes.has(chaveF(l))));
+  }
+
+  // Depois de enviado, contam os totais de cada linha no momento do envio
+  const fixados = o.estado !== "rascunho" ? o.congelado?.linhas : undefined;
+  const totalLinha = (l: ResultadoLinha) => fixados?.[l.linha.id] ?? l.total;
+
+  const escolha = o.opcaoEscolhida ?? {};
+  const incluida = (l: LinhaOrcamento) => !l.grupoOpcao || escolha[l.grupoOpcao] === l.id;
+  const linhasTodas = o.linhas.map((l) => ({ ...porId.get(l.id)!, incluida: incluida(l) }));
+  const linhas = linhasTodas.filter((l) => l.incluida);
 
   const vendaCriacao = o.horasCriacao * precoHora(params, "designer") * tc.fatorHora;
   const custoCriacao = o.horasCriacao * custoHoraPessoa(params, "designer");
-  const subtotal = linhas.reduce((s, l) => s + l.total, 0) + vendaCriacao;
+  const fatorDesconto = 1 - (o.descontoPotencialPct || 0);
+  const subtotalBase = linhasTodas.filter((l) => !l.linha.grupoOpcao).reduce((s, l) => s + totalLinha(l), 0) + vendaCriacao;
+  const subtotal = linhas.reduce((s, l) => s + totalLinha(l), 0) + vendaCriacao;
   const desconto = subtotal * (o.descontoPotencialPct || 0);
   const total = subtotal - desconto;
   const custo = linhas.reduce((s, l) => s + l.custo, 0) + custoCriacao;
+
+  const nomesGrupos = [...new Set(o.linhas.map((l) => l.grupoOpcao).filter((g): g is string => !!g))];
+  const grupos: GrupoOpcoes[] = nomesGrupos.map((grupo) => ({
+    grupo,
+    escolhida: escolha[grupo],
+    opcoes: linhasTodas
+      .filter((l) => l.linha.grupoOpcao === grupo)
+      .map((l) => ({
+        linhaId: l.linha.id,
+        descricao: l.linha.descricao,
+        total: totalLinha(l),
+        totalComBase: (subtotalBase + totalLinha(l)) * fatorDesconto,
+      })),
+  }));
+  const opcoesPorEscolher = grupos.some((g) => !g.escolhida);
+  // "Desde": base com a opção mais barata de cada grupo ainda por escolher
+  const totalReferencia =
+    total +
+    grupos
+      .filter((g) => !g.escolhida)
+      .reduce((s, g) => s + Math.min(...g.opcoes.map((x) => x.total)) * fatorDesconto, 0);
 
   const minutosMaquina: Record<string, number> = {};
   const consumos: Record<string, number> = {};
@@ -488,7 +543,10 @@ export function calcularOrcamento(params: Parametros, o: Orcamento): ResultadoOr
   }
 
   const avisos: string[] = [];
-  for (const l of linhas) avisos.push(...l.avisos.map((t) => `${l.linha.descricao || "Linha"}: ${t}`));
+  for (const l of linhasTodas) avisos.push(...l.avisos.map((t) => `${l.linha.descricao || "Linha"}: ${t}`));
+  for (const g of grupos) {
+    if (g.opcoes.length < 2) avisos.push(`O grupo de opções "${g.grupo}" só tem uma opção.`);
+  }
   if (o.descontoPotencialPct > 0 && !o.descontoMotivo?.trim()) {
     avisos.push("Desconto por potencial sem motivo escrito.");
   }
@@ -498,7 +556,10 @@ export function calcularOrcamento(params: Parametros, o: Orcamento): ResultadoOr
   if (total > 0 && total < custo) avisos.push("O orçamento não cobre o custo.");
 
   return {
-    linhas,
+    linhas: linhasTodas,
+    grupos,
+    opcoesPorEscolher,
+    totalReferencia,
     vendaCriacao,
     custoCriacao,
     subtotal,
@@ -516,4 +577,13 @@ export function calcularOrcamento(params: Parametros, o: Orcamento): ResultadoOr
     usaEstimativas,
     avisos,
   };
+}
+
+/**
+ * Total a mostrar em listas e painéis. Os orçamentos novos já calculam sobre os
+ * totais fixados de cada linha; com opções por escolher, é o "desde" (base mais
+ * a opção mais barata). Nos antigos, só há o total fixado.
+ */
+export function totalParaListas(o: Orcamento, r: ResultadoOrcamento): number {
+  return o.congelado && !o.congelado.linhas && o.estado !== "rascunho" ? o.congelado.total : r.totalReferencia;
 }

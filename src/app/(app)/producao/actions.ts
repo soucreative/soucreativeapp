@@ -2,7 +2,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSessionWithRole } from '@/lib/auth'
-import { calcularOrcamento } from '@/lib/producao/engine'
+import { calcularOrcamento, totalParaListas } from '@/lib/producao/engine'
 import { PARAMETROS_INICIAIS } from '@/lib/producao/defaults'
 import type { Artigo, Cliente, Orcamento, Parametros } from '@/lib/producao/types'
 import { artigoDeLinha, carregarParametros } from './_lib/dados'
@@ -111,7 +111,7 @@ function linhaOrcamento(o: Orcamento, params: Parametros) {
     estado: o.estado,
     data: o.data,
     conteudo: o,
-    total: o.congelado?.total ?? r.total,
+    total: totalParaListas(o, r),
     margem: o.congelado?.margem ?? r.margem,
     updated_at: new Date().toISOString(),
   }

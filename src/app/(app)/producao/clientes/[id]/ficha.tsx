@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { Rotulado, Titulo } from "@/app/(app)/producao/_components/campos";
-import { calcularOrcamento } from "@/lib/producao/engine";
+import { calcularOrcamento, totalParaListas } from "@/lib/producao/engine";
 import { ESTADOS } from "@/lib/producao/estados";
 import { dataPt, euros, percent } from "@/lib/producao/format";
 import { criarOrcamento, guardarCliente, useDados } from "@/app/(app)/producao/_lib/store";
@@ -25,7 +25,7 @@ export default function FichaCliente() {
   const set = (p: Partial<Cliente>) => guardarCliente({ ...c, ...p });
   const orcs = dados.orcamentos
     .filter((o) => o.clienteId === c.id)
-    .map((o) => ({ o, total: o.congelado?.total ?? calcularOrcamento(dados.parametros, o).total }))
+    .map((o) => ({ o, total: totalParaListas(o, calcularOrcamento(dados.parametros, o)) }))
     .sort((a, b) => b.o.data.localeCompare(a.o.data));
   const ganhos = orcs.filter((x) => x.o.estado === "ganho");
   const perdidos = orcs.filter((x) => x.o.estado === "perdido");
