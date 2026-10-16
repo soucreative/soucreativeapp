@@ -1,5 +1,5 @@
 # DEVLOG — SOU Creative
-> Última atualização: 2026-10-14 (noite)
+> Última atualização: 2026-10-16
 > Pipeline de desenvolvimento — o que está feito, em curso e por fazer. As ideias da equipa vivem no quadro "Ideias e melhorias", acima.
 
 ---
@@ -49,9 +49,27 @@ Parte do `SOU_Calculadora_v27.xlsx` e corrige o que nele não batia certo.
 
 ## 🔵 EM CURSO
 
+### Documento do orçamento e templates
+O documento que vai para o cliente já sai da app, com a marca SOU. Falta adaptá-lo ao modelo que a SOU usa hoje.
+
+**Já existe** (Produção → Orçamentos → Documento / PDF):
+- [x] Logótipo, cores e fontes do manual de normas; dados da empresa e condições editáveis em Parâmetros
+- [x] Uma linha por artigo, com as técnicas, a posição e as medidas; preço por peça e total
+- [x] Criação gráfica, desconto por potencial, IVA e total; notas do orçamento
+- [x] Validade calculada a partir da data (30 dias por omissão)
+- [x] Depois de enviado, o documento mostra sempre o preço fixado
+- [x] Guardar como PDF pelo browser; o PDF importa-se no Canva para propostas especiais
+
+**A seguir:**
+- [ ] Receber da SOU o template atual: um orçamento real em PDF, tal como o cliente o recebe, e o ficheiro original (link do Canva, .docx, .ai ou .indd)
+- [ ] Refazer o documento da app a partir desse template: estrutura, secções, textos fixos e aspeto
+- [ ] Decidir se o documento precisa de imagens dos artigos ou de mockups
+- [ ] Decidir se há modelos diferentes por tipo de cliente (particular, empresa, parceiro) ou por tipo de trabalho
+
+O preenchimento automático de um modelo do Canva por API exige Canva Enterprise. Sem isso, o caminho é a app gerar o documento com o aspeto do template.
+
 ### Por decidir
-- [ ] Classificar as 35 contas de despesa do TOC (proposta num Google Doc)
-- [ ] Template do documento de orçamento: que formato e como se usa
+- [ ] Classificar as 35 contas de despesa do TOC (proposta num Google Doc; à espera da resposta da contabilidade)
 
 ### Substituir as estimativas por valores reais
 - [ ] Preço de compra da tinta, do filme, do pó, do papel, da linha, da entretela e do vinil
