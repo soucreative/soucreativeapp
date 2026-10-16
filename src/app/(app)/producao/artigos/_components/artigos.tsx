@@ -16,6 +16,7 @@ export default function ListaArtigos() {
   const [origem, setOrigem] = useState<"todos" | "toc" | "app">("todos");
   const [categoria, setCategoria] = useState("");
   const [limite, setLimite] = useState(POR_PAGINA);
+  const [novo, setNovo] = useState(false);
   const set = (a: Artigo, p: Partial<Artigo>) => guardarArtigo({ ...a, ...p });
 
   const categorias = useMemo(
@@ -27,7 +28,12 @@ export default function ListaArtigos() {
     .filter((a) => origem === "todos" || (origem === "toc") === a.id.startsWith("toc:"))
     .filter((a) => !categoria || a.categoria === categoria)
     .filter((a) => !q || [a.nome, a.categoria, a.fornecedor, a.nota ?? ""].some((t) => t.toLowerCase().includes(q)))
-    .sort((a, b) => a.categoria.localeCompare(b.categoria, "pt") || a.nome.localeCompare(b.nome, "pt"));
+    .sort(
+      (a, b) =>
+        Number(a.id.startsWith("toc:")) - Number(b.id.startsWith("toc:")) ||
+        a.categoria.localeCompare(b.categoria, "pt") ||
+        a.nome.localeCompare(b.nome, "pt"),
+    );
 
   return (
     <>
@@ -36,12 +42,7 @@ export default function ListaArtigos() {
         acoes={
           <>
             <EstadoGravacao />
-            <button
-              className="botao-principal"
-              onClick={() =>
-                guardarArtigo({ id: novoId(), nome: "Novo artigo", categoria: "Outro", fornecedor: "", custo: 0, minimo: 1, portes: 0 })
-              }
-            >
+            <button className="botao-principal" onClick={() => setNovo(true)}>
               + Novo artigo
             </button>
           </>
@@ -50,6 +51,19 @@ export default function ListaArtigos() {
         Artigos
       </Titulo>
 
+      {novo && (
+        <NovoArtigo
+          categorias={categorias}
+          aoFechar={() => setNovo(false)}
+          aoCriar={() => {
+            setOrigem("todos");
+            setCategoria("");
+            setFiltro("");
+            setNovo(false);
+          }}
+        />
+      )}
+
       <SincronizarToc />
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -57,7 +71,7 @@ export default function ListaArtigos() {
         <select className="campo w-auto" value={origem} onChange={(e) => setOrigem(e.target.value as typeof origem)}>
           <option value="todos">Todas as origens</option>
           <option value="toc">Do TOC</option>
-          <option value="app">Criados na app</option>
+          <option value="app">Provisórios (só na app)</option>
         </select>
         <select className="campo w-auto" value={categoria} onChange={(e) => setCategoria(e.target.value)}>
           <option value="">Todas as famílias</option>
@@ -111,6 +125,10 @@ export default function ListaArtigos() {
                         TOC
                       </span>
                     ) : (
+                      <span className="flex items-center gap-1">
+                      <span className="etiqueta bg-beige-claro text-mostarda" title="Criado na app; ainda não existe no TOC">
+                        Provisório
+                      </span>
                       <button
                         className="botao-perigo"
                         title="Apagar artigo"
@@ -118,6 +136,7 @@ export default function ListaArtigos() {
                       >
                         ✕
                       </button>
+                      </span>
                     )}
                   </td>
                 </tr>
@@ -134,11 +153,78 @@ export default function ListaArtigos() {
         )}
       </div>
       <p className="mt-3 text-xs text-cinza">
+        Um artigo novo fica provisório até ser criado no TOC: quando entrar na sincronização seguinte, apague o provisório.
         Nos artigos do TOC, o nome, a família e o custo vêm do TOC e atualizam-se a cada sincronização; o fornecedor, o mínimo e os
         portes ficam como os deixar aqui. Os portes contam uma vez por fornecedor em cada orçamento. Apagar um artigo não mexe nos
         orçamentos que já o usam.
       </p>
     </>
+  );
+}
+
+function NovoArtigo({
+  categorias,
+  aoFechar,
+  aoCriar,
+}: {
+  categorias: string[];
+  aoFechar: () => void;
+  aoCriar: () => void;
+}) {
+  const [a, setA] = useState<Artigo>({ id: novoId(), nome: "", categoria: "", fornecedor: "", custo: 0, minimo: 1, portes: 0 });
+  const set = (p: Partial<Artigo>) => setA({ ...a, ...p });
+  return (
+    <section className="cartao mb-4 border-verde/40">
+      <h2 className="titulo mb-3 text-lg text-verde">Novo artigo provisório</h2>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+        <label className="lg:col-span-2">
+          <span className="rotulo">Nome</span>
+          <input className="campo" autoFocus value={a.nome} onChange={(e) => set({ nome: e.target.value })} placeholder="ex.: Toalha 50×100 algodão 500g" />
+        </label>
+        <label>
+          <span className="rotulo">Família</span>
+          <input className="campo" list="familias-artigos" value={a.categoria} onChange={(e) => set({ categoria: e.target.value })} placeholder="ex.: Toalhas" />
+          <datalist id="familias-artigos">
+            {categorias.map((c) => (
+              <option key={c} value={c} />
+            ))}
+          </datalist>
+        </label>
+        <label>
+          <span className="rotulo">Fornecedor</span>
+          <input className="campo" value={a.fornecedor} onChange={(e) => set({ fornecedor: e.target.value })} />
+        </label>
+        <label>
+          <span className="rotulo">Custo/un (sem IVA)</span>
+          <CampoNumero valor={a.custo} aoMudar={(n) => set({ custo: n ?? 0 })} sufixo="€" min={0} />
+        </label>
+        <div className="grid grid-cols-2 gap-2">
+          <label>
+            <span className="rotulo">Mínimo</span>
+            <CampoNumero valor={a.minimo} aoMudar={(n) => set({ minimo: Math.max(1, Math.round(n ?? 1)) })} min={1} />
+          </label>
+          <label>
+            <span className="rotulo">Portes</span>
+            <CampoNumero valor={a.portes} aoMudar={(n) => set({ portes: n ?? 0 })} sufixo="€" min={0} />
+          </label>
+        </div>
+      </div>
+      <div className="mt-3 flex gap-2">
+        <button
+          className="botao-principal"
+          disabled={!a.nome.trim()}
+          onClick={() => {
+            guardarArtigo({ ...a, nome: a.nome.trim(), categoria: a.categoria.trim() || "Outro", nota: "Provisório: criar no TOC quando for faturado" });
+            aoCriar();
+          }}
+        >
+          Criar artigo
+        </button>
+        <button className="botao-secundario" onClick={aoFechar}>
+          Cancelar
+        </button>
+      </div>
+    </section>
   );
 }
 

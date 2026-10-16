@@ -148,8 +148,12 @@ export function guardarArtigo(a: Artigo) {
   const existe = d.artigos.some((x) => x.id === a.id);
   const artigos = existe ? d.artigos.map((x) => (x.id === a.id ? a : x)) : [...d.artigos, a];
   mudar({ ...d, artigos });
-  // O catálogo de partida só existe no ecrã até à primeira gravação: grava-se tudo.
-  agendar(`artigo:${a.id}`, () => acoes.semearArtigos(ler().artigos));
+  // Com o catálogo do TOC já gravado, grava-se só o artigo que mudou. Regravar
+  // o catálogo inteiro (centenas de artigos) a cada tecla fazia a gravação falhar.
+  agendar(`artigo:${a.id}`, () => {
+    const atual = ler().artigos.find((x) => x.id === a.id);
+    return atual ? acoes.guardarArtigo(atual) : Promise.resolve({ ok: true as const, valor: null });
+  });
 }
 
 /** Traz os produtos do TOC das famílias escolhidas para o catálogo. */
