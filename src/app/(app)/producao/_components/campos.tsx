@@ -69,10 +69,54 @@ export function CampoNumero({
   );
 }
 
-export function Rotulado({ rotulo, children, ajuda }: { rotulo: string; children: ReactNode; ajuda?: string }) {
+/**
+ * Explicação de um campo, atrás de um ícone.
+ *
+ * É um botão e não um ícone solto porque quem navega por teclado também tem de
+ * lhe chegar: abre com foco, não só com o rato. O texto fica sempre no DOM para
+ * os leitores de ecrã o lerem, e o `title` serve de rede quando o CSS não
+ * carrega.
+ */
+export function Ajuda({ texto }: { texto: string }) {
+  return (
+    <span className="group relative ml-1 inline-flex align-middle">
+      <button
+        type="button"
+        title={texto}
+        aria-label={`Ajuda: ${texto}`}
+        className="flex h-3.5 w-3.5 items-center justify-center rounded-full border border-linha text-[9px] font-bold leading-none text-cinza transition hover:border-verde hover:text-verde focus:border-verde focus:text-verde focus:outline-none"
+      >
+        ?
+      </button>
+      <span
+        role="tooltip"
+        className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-1.5 w-60 -translate-x-1/2 rounded-md border border-linha bg-white p-2 text-left text-xs font-normal normal-case leading-snug tracking-normal text-tinta opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+      >
+        {texto}
+      </span>
+    </span>
+  );
+}
+
+export function Rotulado({
+  rotulo,
+  children,
+  ajuda,
+  dica,
+}: {
+  rotulo: string;
+  children: ReactNode;
+  /** Texto curto sempre visível por baixo do campo */
+  ajuda?: string;
+  /** Explicação mais longa, atrás do ícone de ajuda */
+  dica?: string;
+}) {
   return (
     <label className="block">
-      <span className="rotulo">{rotulo}</span>
+      <span className="rotulo">
+        {rotulo}
+        {dica && <Ajuda texto={dica} />}
+      </span>
       {children}
       {ajuda && <span className="mt-1 block text-xs text-cinza">{ajuda}</span>}
     </label>

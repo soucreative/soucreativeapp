@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { CampoNumero, EtiquetaEstimativa, Interruptor, Rotulado, Titulo } from "@/app/(app)/producao/_components/campos";
+import { Ajuda, CampoNumero, EtiquetaEstimativa, Interruptor, Rotulado, Titulo } from "@/app/(app)/producao/_components/campos";
 import {
   amortizacaoAnual,
   custoAnualPessoa,
@@ -19,6 +19,24 @@ import { euros, eurosFino, numero, percent } from "@/lib/producao/format";
 import { atualizarParametros, novoId, reporParametros, useDados } from "@/app/(app)/producao/_lib/store";
 import { EstadoGravacao } from "@/app/(app)/producao/_components/estado-gravacao";
 import type { TipoSetup } from "@/lib/producao/types";
+
+/**
+ * O tipo de setup não se escolhe: sai das três perguntas de cada aplicação no
+ * orçamento (já produzido? arte do cliente? suporte configurado?). O que se
+ * define aqui é quanto do setup completo cada situação consome.
+ */
+const DICA_SETUP: Record<TipoSetup, string> = {
+  completo:
+    "Trabalho novo de raiz: arte por preparar, máquina por acertar, prova por fazer. É a referência — os outros são uma fatia desta.",
+  arte_cliente:
+    "O cliente traz a arte pronta a usar. Poupa-se a preparação do ficheiro, mas a máquina continua por acertar.",
+  parcial:
+    "O suporte já está configurado de um trabalho anterior, mas a arte é nova.",
+  arte_cliente_preparado:
+    "Arte do cliente e suporte já configurado: sobra o acerto da máquina e a prova.",
+  repeticao:
+    "Trabalho já produzido para este cliente: arte digitalizada e suporte prontos. Nunca é zero — há sempre arranque de máquina e prova. Uma repetição também não leva o piso de preço nem o agravamento da peça única.",
+};
 
 const NOMES_K: Record<string, string> = {
   cmykMlCm2: "Tinta CMYK (ml/cm² a 100%)",
@@ -100,7 +118,7 @@ export default function EditorParametros() {
                         <option value="custo_total">À mão: custo total mensal</option>
                       </select>
                     </Rotulado>
-                    <Rotulado rotulo="Preço de venda/hora">
+                    <Rotulado rotulo="Preço de venda/hora" dica="O que se cobra por hora desta função. Não é o custo: o custo sai da massa salarial e das horas vendáveis, logo abaixo. A diferença entre os dois é a margem da mão de obra.">
                       <CampoNumero valor={pe.precoVendaHora} sufixo="€" aoMudar={(n) => mudar((d) => void (d.pessoas[i].precoVendaHora = n ?? 0))} />
                     </Rotulado>
                   </div>
@@ -144,7 +162,7 @@ export default function EditorParametros() {
                     </Rotulado>
                     {pe.modo !== "custo_total" && (
                       <>
-                        <Rotulado rotulo="TSU + seguro">
+                        <Rotulado rotulo="TSU + seguro" dica="Encargos do empregador sobre o salário bruto: Segurança Social e seguro de acidentes de trabalho. Em Portugal a TSU é 23,75%.">
                           <CampoNumero valor={pe.encargosPct} percentagem aoMudar={(n) => mudar((d) => void (d.pessoas[i].encargosPct = n ?? 0))} />
                         </Rotulado>
                         <Rotulado rotulo="Subsídio de alimentação/ano">
@@ -155,7 +173,7 @@ export default function EditorParametros() {
                     <Rotulado rotulo="Outros custos/ano">
                       <CampoNumero valor={pe.outrosAnual} sufixo="€" aoMudar={(n) => mudar((d) => void (d.pessoas[i].outrosAnual = n ?? 0))} />
                     </Rotulado>
-                    <Rotulado rotulo="Tempo na produção">
+                    <Rotulado rotulo="Tempo na produção" dica="Que fatia do tempo desta pessoa é produção. Uma pessoa a meio tempo na produção só leva metade do custo dela à hora produtiva.">
                       <CampoNumero valor={pe.pctProducao} percentagem aoMudar={(n) => mudar((d) => void (d.pessoas[i].pctProducao = n ?? 1))} />
                     </Rotulado>
                   </div>
@@ -190,10 +208,10 @@ export default function EditorParametros() {
                 <CampoNumero valor={p.horas[k]} sufixo={suf} aoMudar={(n) => mudar((d) => void (d.horas[k] = n ?? 0))} />
               </Rotulado>
             ))}
-            <Rotulado rotulo="Absentismo">
+            <Rotulado rotulo="Absentismo" dica="Férias, feriados, baixas e formação — tempo pago que não produz. Entra a reduzir as horas vendáveis do ano.">
               <CampoNumero valor={p.horas.absentismoPct} percentagem aoMudar={(n) => mudar((d) => void (d.horas.absentismoPct = n ?? 0))} />
             </Rotulado>
-            <Rotulado rotulo="Produtividade" ajuda="O parâmetro mais sensível">
+            <Rotulado rotulo="Produtividade" ajuda="O parâmetro mais sensível" dica="Que parte do tempo presente é mesmo trabalho faturável. O resto são reuniões, orçamentos, limpeza e esperas. É o parâmetro mais sensível de todos: descê-lo sobe o custo/hora de tudo.">
               <CampoNumero
                 valor={p.horas.produtividadePct}
                 percentagem
@@ -233,7 +251,7 @@ export default function EditorParametros() {
 
         <Seccao titulo="Capacidade diária (pipeline)">
           <div className="grid max-w-md grid-cols-2 gap-3">
-            <Rotulado rotulo="Horas de máquina por dia útil" ajuda="Por cabeça, em cada máquina">
+            <Rotulado rotulo="Horas de máquina por dia útil" dica="Quantas horas cada máquina pode trabalhar por dia. Limita o pipeline, não o preço." ajuda="Por cabeça, em cada máquina">
               <CampoNumero
                 valor={p.capacidade?.horasDiaMaquina}
                 sufixo="h"
@@ -259,7 +277,7 @@ export default function EditorParametros() {
               <tr>
                 <th>Rubrica</th>
                 <th className="w-36 num">Mensal</th>
-                <th className="w-32 num">% produção</th>
+                <th className="w-32 num">% produção<Ajuda texto="Que fatia desta rubrica é imputada à produção. A renda de um espaço meio loja meio oficina não entra toda." /></th>
                 <th className="num">Anual imputado</th>
                 <th className="w-10" />
               </tr>
@@ -303,10 +321,10 @@ export default function EditorParametros() {
               <tr>
                 <th>Máquina</th>
                 <th className="w-32 num">Valor</th>
-                <th className="w-24 num">Vida (anos)</th>
-                <th className="w-32 num">Manutenção/ano</th>
-                <th className="w-28 num">Horas uso/ano</th>
-                <th className="w-28 num">Energia/h</th>
+                <th className="w-24 num">Vida (anos)<Ajuda texto="Anos de vida útil para a amortização. Valor a dividir pelos anos dá a amortização anual." /></th>
+                <th className="w-32 num">Manutenção/ano<Ajuda texto="Assistência, peças e consumíveis de manutenção por ano. Entra no custo/hora da máquina." /></th>
+                <th className="w-28 num">Horas uso/ano<Ajuda texto="Horas que se espera que a máquina trabalhe por ano. É o denominador do custo/hora: metade das horas, o dobro do custo por hora." /></th>
+                <th className="w-28 num">Energia/h<Ajuda texto="Custo de electricidade por hora de trabalho da máquina." /></th>
                 <th className="num">Amortização/ano</th>
                 <th className="num">Custo/h</th>
                 <th className="num" title={`Custo/h com a margem de personalização de Empresa (${percent(margemRef)}), sem operador`}>
@@ -401,22 +419,22 @@ export default function EditorParametros() {
                   <Interruptor ligado={t.estimativa} aoMudar={(v) => mudar((d) => void (d.tecnicas[i].estimativa = v))} rotulo="estimativa" />
                 </div>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  <Rotulado rotulo="Setup: designer (min)">
+                  <Rotulado rotulo="Setup: designer (min)" dica="Preparação da arte, uma vez por trabalho: ficheiro, cores, prova. No bordado a digitalização vem à parte, da complexidade.">
                     <CampoNumero valor={t.setupDesignerMin} aoMudar={(n) => mudar((d) => void (d.tecnicas[i].setupDesignerMin = n ?? 0))} />
                   </Rotulado>
-                  <Rotulado rotulo="Setup: operador (min)">
+                  <Rotulado rotulo="Setup: operador (min)" dica="Preparação da máquina, uma vez por trabalho: linhas, bastidor, teste. Multiplica-se por cada máquina que trabalhe em paralelo.">
                     <CampoNumero valor={t.setupOperadorMin} aoMudar={(n) => mudar((d) => void (d.tecnicas[i].setupOperadorMin = n ?? 0))} />
                   </Rotulado>
-                  <Rotulado rotulo="Manuseamento/peça (min)">
+                  <Rotulado rotulo="Manuseamento/peça (min)" dica="Tempo de operador em cada peça: pegar, posicionar, prensar, arrumar. Ao contrário do setup, repete-se peça a peça.">
                     <CampoNumero valor={t.manuseamentoMin} aoMudar={(n) => mudar((d) => void (d.tecnicas[i].manuseamentoMin = n ?? 0))} />
                   </Rotulado>
-                  <Rotulado rotulo="Desperdício">
+                  <Rotulado rotulo="Desperdício" dica="Percentagem de consumível perdida em testes, falhas e sobras. Agrava só o consumível, não o tempo.">
                     <CampoNumero valor={t.desperdicioPct} percentagem aoMudar={(n) => mudar((d) => void (d.tecnicas[i].desperdicioPct = n ?? 0))} />
                   </Rotulado>
-                  <Rotulado rotulo="Mínimo por peça">
+                  <Rotulado rotulo="Mínimo por peça" dica="Piso de preço da aplicação. Cobre o atendimento de uma encomenda minúscula, que é um custo fixo e não proporcional — por isso é um valor em euros e não uma percentagem.">
                     <CampoNumero valor={t.minimoPorPeca} sufixo="€" aoMudar={(n) => mudar((d) => void (d.tecnicas[i].minimoPorPeca = n ?? 0))} />
                   </Rotulado>
-                  <Rotulado rotulo="Mínimo até (un.; 0 = nunca)">
+                  <Rotulado rotulo="Mínimo até (un.; 0 = nunca)" dica="Até que quantidade o piso ainda morde. 1 = só a peça única. 0 = desligado. Uma repetição nunca leva piso, seja qual for a quantidade.">
                     <CampoNumero valor={t.minimoAteQtd} aoMudar={(n) => mudar((d) => void (d.tecnicas[i].minimoAteQtd = n ?? 0))} />
                   </Rotulado>
                   <Rotulado rotulo="Área máxima (cm)">
@@ -449,9 +467,9 @@ export default function EditorParametros() {
               <thead>
                 <tr>
                   <th>Tipo</th>
-                  <th className="num">Margem peça</th>
-                  <th className="num">Margem personalização</th>
-                  <th className="num">Fator hora</th>
+                  <th className="num">Margem peça<Ajuda texto="Margem sobre o artigo comprado — a t-shirt, a caneca. Aplica-se ao custo de compra." /></th>
+                  <th className="num">Margem personalização<Ajuda texto="Margem sobre o consumível e o tempo de máquina da personalização. A mão de obra não entra aqui: vende-se ao preço/hora, que já tem margem dentro." /></th>
+                  <th className="num">Fator hora<Ajuda texto="Multiplica o preço/hora para este tipo de cliente. Acima de 1 encarece, abaixo baixa. Um particular dá mais trabalho de atendimento por euro faturado." /></th>
                 </tr>
               </thead>
               <tbody>
@@ -531,7 +549,7 @@ export default function EditorParametros() {
               </tbody>
             </table>
             <div className="mt-3 max-w-xs">
-              <Rotulado rotulo="Acima disto, subcontratar (un)">
+              <Rotulado rotulo="Acima disto, subcontratar (un)" dica="Acima desta quantidade a app avisa para avaliar se compensa subcontratar em vez de produzir cá.">
                 <CampoNumero valor={p.limiteSubcontratar} aoMudar={(n) => mudar((d) => void (d.limiteSubcontratar = Math.round(n ?? 300)))} />
               </Rotulado>
             </div>
@@ -542,7 +560,7 @@ export default function EditorParametros() {
           <Seccao titulo="Tipos de setup (% do setup completo)">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {(Object.keys(p.setups) as TipoSetup[]).map((k) => (
-                <Rotulado key={k} rotulo={NOME_SETUP[k]}>
+                <Rotulado key={k} rotulo={NOME_SETUP[k]} dica={DICA_SETUP[k]}>
                   <CampoNumero valor={p.setups[k]} percentagem aoMudar={(n) => mudar((d) => void (d.setups[k] = n ?? 0))} />
                 </Rotulado>
               ))}
