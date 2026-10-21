@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { CampoNumero, EtiquetaEstimativa, Titulo } from "@/app/(app)/producao/_components/campos";
+import { CampoNumero, Interruptor, Titulo } from "@/app/(app)/producao/_components/campos";
 import { calcularOrcamento, precoConsumivel, CONSUMIVEIS_DO_MOTOR } from "@/lib/producao/engine";
 import { eurosFino, numero } from "@/lib/producao/format";
 import { atualizarParametros, atualizarStock, novoId, useDados } from "@/app/(app)/producao/_lib/store";
 import { EstadoGravacao } from "@/app/(app)/producao/_components/estado-gravacao";
 import type { Consumivel, Parametros } from "@/lib/producao/types";
+
+const UNIDADES: Consumivel["unidade"][] = ["ml", "cm²", "g", "m", "un"];
 
 export default function Consumiveis() {
   const dados = useDados();
@@ -95,7 +97,34 @@ export default function Consumiveis() {
                     return (
                       <tr key={c.id}>
                         <td>
-                          {c.nome} {c.estimativa && <EtiquetaEstimativa />}
+                          <div className="flex items-center gap-2">
+                            <input
+                              className="campo flex-1 min-w-40"
+                              value={c.nome}
+                              onChange={(ev) => mexer(c.id, (x) => void (x.nome = ev.target.value))}
+                            />
+                            {/* Mudar a unidade não converte o que lá está: os
+                                stocks e os consumos por cm² continuam com o
+                                número que tinham, agora a querer dizer outra
+                                coisa. Daí o aviso. */}
+                            <select
+                              className="campo w-20"
+                              value={c.unidade}
+                              title="Mudar a unidade não converte os valores já escritos"
+                              onChange={(ev) => mexer(c.id, (x) => void (x.unidade = ev.target.value as Consumivel["unidade"]))}
+                            >
+                              {UNIDADES.map((u) => (
+                                <option key={u} value={u}>
+                                  {u}
+                                </option>
+                              ))}
+                            </select>
+                            <Interruptor
+                              ligado={c.estimativa}
+                              aoMudar={(v) => mexer(c.id, (x) => void (x.estimativa = v))}
+                              rotulo="estimativa"
+                            />
+                          </div>
                         </td>
                         <td>
                           <CampoNumero
@@ -190,7 +219,6 @@ export default function Consumiveis() {
   );
 }
 
-const UNIDADES: Consumivel["unidade"][] = ["ml", "cm²", "g", "m", "un"];
 
 /**
  * Acrescentar um consumível a uma máquina.
