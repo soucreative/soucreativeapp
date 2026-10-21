@@ -481,12 +481,18 @@ export default function EditorParametros() {
           </Seccao>
 
           <Seccao titulo="Escalões de quantidade">
+            <p className="mb-3 text-xs text-cinza">
+              O ajuste é sobre o preço da personalização. <strong>Positivo desconta, negativo agrava</strong> —
+              escreve −10 para encarecer 10 %. A peça única costuma agravar; dali para cima desconta-se.
+              Dois escalões com o mesmo ajuste são, na prática, um escalão só.
+            </p>
             <table className="tabela">
               <thead>
                 <tr>
                   <th>Escalão</th>
                   <th className="num">Até (un)</th>
-                  <th className="num">Desconto na personalização</th>
+                  <th className="num">Ajuste ao preço</th>
+                  <th />
                 </tr>
               </thead>
               <tbody>
@@ -504,6 +510,21 @@ export default function EditorParametros() {
                         percentagem
                         aoMudar={(n) => mudar((d) => void (d.escaloes[i].descontoPersonalizacao = n ?? 0))}
                       />
+                    </td>
+                    {/* O sinal sozinho engana: dizer por palavras evita escrever
+                        −10 a pensar que se está a dar um desconto de 10% */}
+                    <td className="whitespace-nowrap text-xs">
+                      {e.descontoPersonalizacao > 0 ? (
+                        <span className="text-verde">
+                          desconta {Math.round(e.descontoPersonalizacao * 1000) / 10} %
+                        </span>
+                      ) : e.descontoPersonalizacao < 0 ? (
+                        <span className="text-mostarda">
+                          agrava {Math.round(-e.descontoPersonalizacao * 1000) / 10} %
+                        </span>
+                      ) : (
+                        <span className="text-cinza">sem ajuste</span>
+                      )}
                     </td>
                   </tr>
                 ))}
