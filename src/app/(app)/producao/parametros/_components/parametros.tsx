@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 
 import type { ReactNode } from "react";
 import { Ajuda, CampoNumero, EtiquetaEstimativa, Interruptor, Rotulado, Titulo } from "@/app/(app)/producao/_components/campos";
@@ -382,80 +383,42 @@ export default function EditorParametros() {
           </p>
         </Seccao>
 
-        <Seccao titulo="Consumíveis: preço da embalagem">
+        <Seccao titulo="Consumíveis: preço por unidade">
+          {/* Os preços editam-se em Consumíveis, que é onde se olha quando
+              chega uma factura e onde se conta o stock. Aqui só se leem: ter
+              dois sítios a escrever o mesmo número é como não ter nenhum. */}
           <p className="mb-3 text-xs text-cinza">
-            Escreve-se o que vem na factura do fornecedor — o preço do frasco e quanto traz — e o
-            preço por unidade sai da divisão. Os três campos editam-se: mexer num acerta o outro,
-            para nunca ficarem a discordar. Sem embalagem, vale o preço por unidade sozinho.
+            Editam-se em{" "}
+            <Link className="text-verde underline" href="/producao/consumiveis">
+              Consumíveis
+            </Link>
+            , junto ao stock. Aqui mostram-se os que entram no custo de cada técnica.
           </p>
           <table className="tabela">
             <thead>
               <tr>
                 <th>Consumível</th>
                 <th>Máquina</th>
-                <th className="w-32 num">
-                  Preço da embalagem
-                  <Ajuda texto="O que custa o frasco, a bobina ou a caixa, tal como vem na factura." />
-                </th>
-                <th className="w-32 num">
-                  Quantidade
-                  <Ajuda texto="Quanto traz a embalagem, na unidade do consumível: ml de tinta, cm² de papel, metros de linha." />
-                </th>
-                <th className="w-40 num">
-                  Preço por unidade
-                  <Ajuda texto="Sai da divisão da embalagem, mas também se pode escrever aqui: nesse caso é o preço da embalagem que se acerta, para os dois nunca discordarem." />
-                </th>
+                <th className="num">Embalagem</th>
+                <th className="num">Preço por unidade</th>
                 <th>Estimativa</th>
               </tr>
             </thead>
             <tbody>
-              {p.consumiveis.map((c, i) => (
+              {p.consumiveis.map((c) => (
                 <tr key={c.id}>
                   <td>{c.nome}</td>
                   <td className="text-cinza">{p.maquinas.find((m) => m.id === c.maquinaId)?.nome.split(" (")[0]}</td>
-                  <td>
-                    <CampoNumero
-                      valor={c.embalagemPreco}
-                      sufixo="€"
-                      vazio
-                      estimativa={c.estimativa}
-                      aoMudar={(n) => mudar((d) => void (d.consumiveis[i].embalagemPreco = n))}
-                    />
+                  <td className="num text-cinza">
+                    {temEmbalagem(c)
+                      ? `${eurosFino(c.embalagemPreco ?? 0)} / ${c.embalagemQtd} ${c.unidade}`
+                      : "—"}
                   </td>
-                  <td>
-                    <CampoNumero
-                      valor={c.embalagemQtd}
-                      sufixo={c.unidade}
-                      vazio
-                      estimativa={c.estimativa}
-                      aoMudar={(n) => mudar((d) => void (d.consumiveis[i].embalagemQtd = n))}
-                    />
+                  <td className="num">
+                    {eurosFino(precoConsumivel(c))}
+                    <span className="ml-1 text-xs text-cinza">/{c.unidade}</span>
                   </td>
-                  {/* Os dois lados editam-se, e mexer num acerta o outro. Com
-                      embalagem, escrever aqui 0,35 €/ml num frasco de 700 ml
-                      passa o frasco a 245 € — em vez de bloquear o campo ou de
-                      deixar os dois números a discordar sem se saber qual vale. */}
-                  <td>
-                    <CampoNumero
-                      valor={precoConsumivel(c)}
-                      sufixo={`€/${c.unidade}`}
-                      estimativa={c.estimativa}
-                      aoMudar={(n) =>
-                        mudar((d) => {
-                          const alvo = d.consumiveis[i];
-                          const novo = n ?? 0;
-                          if (temEmbalagem(alvo)) alvo.embalagemPreco = novo * (alvo.embalagemQtd ?? 1);
-                          else alvo.preco = novo;
-                        })
-                      }
-                    />
-                    <div className="mt-0.5 text-right text-[11px] text-cinza">
-                      {temEmbalagem(c) ? `${eurosFino(precoConsumivel(c))} · da embalagem` : eurosFino(c.preco)}
-                    </div>
-                  </td>
-                  <td>
-                    <Interruptor ligado={c.estimativa} aoMudar={(v) => mudar((d) => void (d.consumiveis[i].estimativa = v))} rotulo="" />
-                  </td>
+                  <td>{c.estimativa && <EtiquetaEstimativa />}</td>
                 </tr>
               ))}
             </tbody>

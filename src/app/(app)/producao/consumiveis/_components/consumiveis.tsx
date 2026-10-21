@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import { CampoNumero, EtiquetaEstimativa, Titulo } from "@/app/(app)/producao/_components/campos";
-import { calcularOrcamento } from "@/lib/producao/engine";
-import { euros, eurosFino, numero } from "@/lib/producao/format";
-import { atualizarStock, useDados } from "@/app/(app)/producao/_lib/store";
+import { calcularOrcamento, precoConsumivel } from "@/lib/producao/engine";
+import { numero } from "@/lib/producao/format";
+import { atualizarParametros, atualizarStock, useDados } from "@/app/(app)/producao/_lib/store";
 import { EstadoGravacao } from "@/app/(app)/producao/_components/estado-gravacao";
+import type { Parametros } from "@/lib/producao/types";
 
 export default function Consumiveis() {
   const dados = useDados();
@@ -23,6 +24,16 @@ export default function Consumiveis() {
   }, [dados.orcamentos, p]);
 
   const maquinas = p.maquinas.filter((m) => p.consumiveis.some((c) => c.maquinaId === m.id));
+
+  // Os preços vivem aqui, que é onde se olha quando chega uma factura. Os
+  // parâmetros leem-nos; não se escrevem nos dois sítios.
+  const mexer = (id: string, fn: (c: Parametros["consumiveis"][number]) => void) =>
+    atualizarParametros((d) => {
+      const c = d.consumiveis.find((x) => x.id === id);
+      if (c) fn(c);
+    });
+  const temEmbalagem = (c: { embalagemPreco?: number; embalagemQtd?: number }) =>
+    c.embalagemPreco != null && c.embalagemQtd != null && c.embalagemQtd > 0;
 
   return (
     <>
@@ -53,7 +64,9 @@ export default function Consumiveis() {
               <thead>
                 <tr>
                   <th>Consumível</th>
-                  <th className="num">Preço</th>
+                  <th className="w-28 num">Embalagem</th>
+                  <th className="w-28 num">Traz</th>
+                  <th className="w-32 num">Preço/un</th>
                   <th className="w-36 num">Stock atual</th>
                   <th className="w-36 num">Stock mínimo</th>
                   <th className="num">Reservado</th>
@@ -80,8 +93,39 @@ export default function Consumiveis() {
                         <td>
                           {c.nome} {c.estimativa && <EtiquetaEstimativa />}
                         </td>
-                        <td className="num text-cinza">
-                          {c.preco < 0.01 ? eurosFino(c.preco) : euros(c.preco)}/{c.unidade}
+                        <td>
+                          <CampoNumero
+                            valor={c.embalagemPreco}
+                            sufixo="€"
+                            vazio
+                            min={0}
+                            aoMudar={(n) => mexer(c.id, (x) => void (x.embalagemPreco = n))}
+                          />
+                        </td>
+                        <td>
+                          <CampoNumero
+                            valor={c.embalagemQtd}
+                            sufixo={c.unidade}
+                            vazio
+                            min={0}
+                            aoMudar={(n) => mexer(c.id, (x) => void (x.embalagemQtd = n))}
+                          />
+                        </td>
+                        {/* Mexer no preço/un acerta a embalagem, para os dois
+                            nunca discordarem sem se saber qual vale */}
+                        <td>
+                          <CampoNumero
+                            valor={precoConsumivel(c)}
+                            sufixo={`€/${c.unidade}`}
+                            min={0}
+                            aoMudar={(n) =>
+                              mexer(c.id, (x) => {
+                                const novo = n ?? 0;
+                                if (temEmbalagem(x)) x.embalagemPreco = novo * (x.embalagemQtd ?? 1);
+                                else x.preco = novo;
+                              })
+                            }
+                          />
                         </td>
                         <td>
                           <CampoNumero
