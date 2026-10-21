@@ -5,7 +5,7 @@ import type { Artigo, Parametros } from "./types";
 // Pessoas, horas e FSE vêm do SOU_Calculadora_v27.xlsx (folha Custo hora).
 
 export const PARAMETROS_INICIAIS: Parametros = {
-  versao: 2,
+  versao: 3,
   empresa: {
     nome: "SOU Creative",
     nif: "",
@@ -145,7 +145,7 @@ export const PARAMETROS_INICIAIS: Parametros = {
       manuseamentoMin: 2,
       desperdicioPct: 0.1,
       minimoPorPeca: 3,
-      minimoAteQtd: 14,
+      minimoAteQtd: 1,
       areaMaxCm: [40, 50],
       k: {
         cmykMlCm2: 0.005, // ml por cm² a 100% de cobertura
@@ -166,7 +166,7 @@ export const PARAMETROS_INICIAIS: Parametros = {
       manuseamentoMin: 2,
       desperdicioPct: 0.1,
       minimoPorPeca: 2.5,
-      minimoAteQtd: 14,
+      minimoAteQtd: 1,
       areaMaxCm: [40, 50],
       k: {
         cmykMlCm2: 0.005,
@@ -187,7 +187,7 @@ export const PARAMETROS_INICIAIS: Parametros = {
       manuseamentoMin: 1.5,
       desperdicioPct: 0.1,
       minimoPorPeca: 2,
-      minimoAteQtd: 14,
+      minimoAteQtd: 1,
       areaMaxCm: [29.7, 42],
       k: {
         tintaMlCm2: 0.00025, // 0,157 ml num A4 (folha de custos da SOU)
@@ -208,7 +208,7 @@ export const PARAMETROS_INICIAIS: Parametros = {
       manuseamentoMin: 2,
       desperdicioPct: 0.05,
       minimoPorPeca: 3,
-      minimoAteQtd: 14,
+      minimoAteQtd: 1,
       areaMaxCm: [30, 40],
       k: {
         pontosMinuto: 700, // velocidade efectiva, não a máxima da máquina
@@ -229,7 +229,7 @@ export const PARAMETROS_INICIAIS: Parametros = {
       manuseamentoMin: 1,
       desperdicioPct: 0.1,
       minimoPorPeca: 2,
-      minimoAteQtd: 14,
+      minimoAteQtd: 1,
       areaMaxCm: [30, 60],
       k: {
         vinilFator: 1.3,
@@ -271,14 +271,20 @@ export const PARAMETROS_INICIAIS: Parametros = {
       nota: "Margem mais baixa em troca de arte pronta, produtos de catálogo e mínimo de encomenda.",
     },
   ],
+  // A peça única tem escalão só dela: é onde o setup inteiro cai numa peça e a
+  // economia é outra. É também o único escalão onde o preço mínimo morde.
+  //
+  // Dois escalões com o mesmo desconto são um escalão só — por isso a escada
+  // desce sempre, em vez de repetir zeros como fazia antes do 15.
   escaloes: [
-    { ate: 5, nome: "1–5", descontoPersonalizacao: 0 },
-    { ate: 14, nome: "6–14", descontoPersonalizacao: 0 },
-    { ate: 49, nome: "15–49", descontoPersonalizacao: 0.05 },
-    { ate: 149, nome: "50–149", descontoPersonalizacao: 0.1 },
-    { ate: 300, nome: "150–300", descontoPersonalizacao: 0.15 },
+    { ate: 1, nome: "1", descontoPersonalizacao: 0 },
+    { ate: 6, nome: "2–6", descontoPersonalizacao: 0 },
+    { ate: 14, nome: "7–14", descontoPersonalizacao: 0.03 },
+    { ate: 49, nome: "15–49", descontoPersonalizacao: 0.06 },
+    { ate: 100, nome: "50–100", descontoPersonalizacao: 0.1 },
+    { ate: 149, nome: "101–149", descontoPersonalizacao: 0.14 },
   ],
-  limiteSubcontratar: 300,
+  limiteSubcontratar: 149,
   // Valores das células do v27 (o texto da folha Regras dizia 65/60/55%).
   setups: {
     completo: 1,
@@ -329,6 +335,22 @@ export function completarParametros(guardado: Partial<Parametros>): Parametros {
   // Os valores manuais ficam guardados como alternativa.
   if ((guardado.versao ?? 1) < 2 && guardado.pessoas) {
     guardado = { ...guardado, versao: 2, pessoas: guardado.pessoas.map((p) => ({ ...p, modo: "colaboradores" as const })) };
+  }
+  // Versão 3: os escalões passam a isolar a peça única e a descer sempre, e o
+  // preço mínimo passa a morder só nessa peça única. Antes disso, o 1–5 e o
+  // 6–14 tinham o mesmo desconto — zero — e era o mínimo que fazia o trabalho
+  // todo, com um degrau de 14,84 € entre pedir 14 peças e pedir 15.
+  //
+  // Os escalões são substituídos e não fundidos: as fronteiras mudaram, e
+  // juntar as antigas às novas daria uma escada sem sentido.
+  if ((guardado.versao ?? 1) < 3) {
+    guardado = {
+      ...guardado,
+      versao: 3,
+      escaloes: base.escaloes,
+      limiteSubcontratar: base.limiteSubcontratar,
+      tecnicas: guardado.tecnicas?.map((t) => ({ ...t, minimoAteQtd: 1 })),
+    };
   }
   const juntarPorId = <T extends { id: string }>(g: T[] | undefined, b: T[]) =>
     g ? [...g, ...b.filter((x) => !g.some((y) => y.id === x.id))] : b;

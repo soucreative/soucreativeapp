@@ -416,7 +416,7 @@ export default function EditorParametros() {
                   <Rotulado rotulo="Mínimo por peça">
                     <CampoNumero valor={t.minimoPorPeca} sufixo="€" aoMudar={(n) => mudar((d) => void (d.tecnicas[i].minimoPorPeca = n ?? 0))} />
                   </Rotulado>
-                  <Rotulado rotulo="Mínimo só até (un.)">
+                  <Rotulado rotulo="Mínimo até (un.; 0 = nunca)">
                     <CampoNumero valor={t.minimoAteQtd} aoMudar={(n) => mudar((d) => void (d.tecnicas[i].minimoAteQtd = n ?? 0))} />
                   </Rotulado>
                   <Rotulado rotulo="Área máxima (cm)">

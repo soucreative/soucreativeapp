@@ -116,7 +116,7 @@ export interface ParamTecnica {
   // Quantidade até à qual o mínimo ainda se aplica, inclusive. Acima disso o
   // preço segue o cálculo: num trabalho de série, um mínimo pensado para uma
   // peça solta deixa de fazer sentido e passa a inflacionar o orçamento.
-  // 0 = sem limite, o mínimo aplica-se sempre.
+  // 1 = só a peça única. 0 = nunca, o mínimo fica desligado.
   minimoAteQtd: number;
   areaMaxCm: [number, number]; // largura x altura máximas
   // Coeficientes de consumo e tempo. O significado de cada um está em engine.ts.

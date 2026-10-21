@@ -339,8 +339,7 @@ export function calcularAplicacao(
   // balcão. Não se aplica a empresas nem a parceiros, e deixa de se aplicar
   // acima da quantidade definida nos parâmetros: numa série, um mínimo pensado
   // para uma peça solta só inflaciona o orçamento.
-  const minimoAplicavel =
-    tc.aplicaMinimo && (pt.minimoAteQtd <= 0 || quantidade <= pt.minimoAteQtd);
+  const minimoAplicavel = tc.aplicaMinimo && quantidade <= pt.minimoAteQtd;
   const vendaPeca = minimoAplicavel ? Math.max(vendaPecaSemMinimo, pt.minimoPorPeca) : vendaPecaSemMinimo;
 
   const tipoSetup = tipoSetupDe(a);
