@@ -93,7 +93,12 @@ export interface Consumivel {
   id: string;
   nome: string;
   unidade: "ml" | "cm²" | "g" | "m" | "un";
-  preco: number; // € por unidade
+  // Ninguém compra tinta por mililitro: compra frascos. Com estes dois
+  // preenchidos, o preço por unidade é calculado e não se escreve — assim o
+  // que se actualiza é o que vem na factura do fornecedor.
+  embalagemPreco?: number;
+  embalagemQtd?: number; // na mesma unidade do consumível
+  preco: number; // € por unidade; ignorado quando há embalagem
   maquinaId: string;
   estimativa: boolean;
   stock?: number;

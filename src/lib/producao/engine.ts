@@ -1,5 +1,6 @@
 import type {
   Aplicacao,
+  Consumivel,
   Escalao,
   LinhaOrcamento,
   Maquina,
@@ -269,11 +270,22 @@ export function calcularPeca(params: Parametros, a: Aplicacao, emParalelo = 1): 
   return { areaCm2: area, pontos, consumos, maquinaMin, operadorMin, designerMin, avisos };
 }
 
+/**
+ * Preço por unidade de um consumível. Vem da embalagem quando ela está
+ * preenchida: é o que se tem à mão quando chega a factura do fornecedor, e
+ * evita que alguém actualize o frasco e se esqueça de refazer a divisão.
+ */
+export function precoConsumivel(c: Pick<Consumivel, "preco" | "embalagemPreco" | "embalagemQtd">): number {
+  const { embalagemPreco: p, embalagemQtd: q } = c;
+  if (p != null && q != null && q > 0) return p / q;
+  return c.preco;
+}
+
 function custoConsumos(params: Parametros, consumos: Record<string, number>): number {
   let s = 0;
   for (const [id, q] of Object.entries(consumos)) {
     const c = params.consumiveis.find((x) => x.id === id);
-    if (c) s += q * c.preco;
+    if (c) s += q * precoConsumivel(c);
   }
   return s;
 }

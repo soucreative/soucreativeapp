@@ -123,14 +123,14 @@ export const PARAMETROS_INICIAIS: Parametros = {
   ],
   consumiveis: [
     // GTX e sublimação: folhas de custos da SOU (out 2026)
-    { id: "gtx_cmyk", nome: "Tinta GTX CMYK", unidade: "ml", preco: 0.322, maquinaId: "gtx", estimativa: false, nota: "225,40 € por 0,7 L" },
-    { id: "gtx_branco", nome: "Tinta GTX branco", unidade: "ml", preco: 0.2654, maquinaId: "gtx", estimativa: false, nota: "371,50 € por 1,4 L" },
-    { id: "dtg_pretrat", nome: "Líquido de pré-tratamento", unidade: "ml", preco: 0.016, maquinaId: "gtx", estimativa: false, nota: "16 € por litro" },
-    { id: "gtx_manutencao", nome: "Kit de manutenção GTX", unidade: "un", preco: 0.0132, maquinaId: "gtx", estimativa: false, nota: "330 € a cada 25 000 impressões" },
+    { id: "gtx_cmyk", nome: "Tinta GTX CMYK", unidade: "ml", embalagemPreco: 225.4, embalagemQtd: 700, preco: 0.322, maquinaId: "gtx", estimativa: false, nota: "225,40 € por 0,7 L" },
+    { id: "gtx_branco", nome: "Tinta GTX branco", unidade: "ml", embalagemPreco: 371.5, embalagemQtd: 1400, preco: 0.2654, maquinaId: "gtx", estimativa: false, nota: "371,50 € por 1,4 L" },
+    { id: "dtg_pretrat", nome: "Líquido de pré-tratamento", unidade: "ml", embalagemPreco: 16, embalagemQtd: 1000, preco: 0.016, maquinaId: "gtx", estimativa: false, nota: "16 € por litro" },
+    { id: "gtx_manutencao", nome: "Kit de manutenção GTX", unidade: "un", embalagemPreco: 330, embalagemQtd: 25000, preco: 0.0132, maquinaId: "gtx", estimativa: false, nota: "330 € a cada 25 000 impressões" },
     { id: "dtf_filme", nome: "Filme DTF", unidade: "cm²", preco: 0.0004, maquinaId: "gtx", estimativa: true },
     { id: "dtf_po", nome: "Pó adesivo DTF", unidade: "g", preco: 0.015, maquinaId: "gtx", estimativa: true },
-    { id: "sub_tinta", nome: "Tinta Sawgrass", unidade: "ml", preco: 1.6129, maquinaId: "sawgrass", estimativa: false, nota: "50 € por tinteiro de 31 ml" },
-    { id: "sub_papel", nome: "Papel de sublimação", unidade: "cm²", preco: 0.000218, maquinaId: "sawgrass", estimativa: false, nota: "13,60 € por 100 folhas A4" },
+    { id: "sub_tinta", nome: "Tinta Sawgrass", unidade: "ml", embalagemPreco: 50, embalagemQtd: 31, preco: 1.6129, maquinaId: "sawgrass", estimativa: false, nota: "50 € por tinteiro de 31 ml" },
+    { id: "sub_papel", nome: "Papel de sublimação", unidade: "cm²", embalagemPreco: 13.6, embalagemQtd: 62370, preco: 0.000218, maquinaId: "sawgrass", estimativa: false, nota: "13,60 € por 100 folhas A4" },
     { id: "sub_fita", nome: "Fita térmica", unidade: "un", preco: 0.02, maquinaId: "sawgrass", estimativa: true },
     { id: "bord_linha", nome: "Linha de bordar (agulha + bobina)", unidade: "m", preco: 0.0014, maquinaId: "melco", estimativa: true },
     { id: "bord_entretela", nome: "Entretela", unidade: "cm²", preco: 0.0004, maquinaId: "melco", estimativa: true },
@@ -356,7 +356,19 @@ export function completarParametros(guardado: Partial<Parametros>): Parametros {
     ...guardado,
     empresa: { ...base.empresa, ...guardado.empresa },
     maquinas: juntarPorId(guardado.maquinas, base.maquinas),
-    consumiveis: juntarPorId(guardado.consumiveis, base.consumiveis),
+    // Os consumíveis guardados ganham a embalagem que o código passou a ter —
+    // mas só quando o preço por unidade ainda é o de origem. Quem já o corrigiu
+    // à mão não deve vê-lo substituído por uma divisão que não pediu.
+    consumiveis: (() => {
+      const g = guardado.consumiveis;
+      if (!g) return base.consumiveis;
+      const comEmbalagem = g.map((c) => {
+        const b = base.consumiveis.find((x) => x.id === c.id);
+        const porTocar = b && c.embalagemQtd == null && Math.abs(b.preco - c.preco) < 1e-9;
+        return porTocar ? { ...c, embalagemPreco: b.embalagemPreco, embalagemQtd: b.embalagemQtd } : c;
+      });
+      return [...comEmbalagem, ...base.consumiveis.filter((x) => !g.some((y) => y.id === x.id))];
+    })(),
     tecnicas: base.tecnicas.map((b) => {
       const g = guardado.tecnicas?.find((t) => t.tecnica === b.tecnica);
       return g ? { ...b, ...g, maquinasIds: g.maquinasIds ?? b.maquinasIds, k: { ...b.k, ...g.k } } : b;

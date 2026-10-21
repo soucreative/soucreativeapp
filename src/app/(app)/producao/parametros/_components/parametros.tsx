@@ -9,6 +9,7 @@ import {
   custoHoraPessoa,
   fseAnual,
   horasFaturaveisPorPessoa,
+  precoConsumivel,
   NOME_SETUP,
   NOME_TECNICA,
   quotaFseHora,
@@ -37,6 +38,10 @@ const DICA_SETUP: Record<TipoSetup, string> = {
   repeticao:
     "Trabalho já produzido para este cliente: arte digitalizada e suporte prontos. Nunca é zero — há sempre arranque de máquina e prova. Uma repetição também não leva o piso de preço nem o agravamento da peça única.",
 };
+
+/** Tem embalagem preenchida? Então o preço por unidade é calculado. */
+const temEmbalagem = (c: { embalagemPreco?: number; embalagemQtd?: number }) =>
+  c.embalagemPreco != null && c.embalagemQtd != null && c.embalagemQtd > 0;
 
 const NOMES_K: Record<string, string> = {
   cmykMlCm2: "Tinta CMYK (ml/cm² a 100%)",
@@ -377,13 +382,29 @@ export default function EditorParametros() {
           </p>
         </Seccao>
 
-        <Seccao titulo="Consumíveis: preço por unidade">
+        <Seccao titulo="Consumíveis: preço da embalagem">
+          <p className="mb-3 text-xs text-cinza">
+            Escreve-se o que vem na factura do fornecedor — o preço do frasco e quanto traz — e o
+            preço por unidade sai da divisão. Deixando a embalagem em branco, escreve-se o preço
+            por unidade directamente, para o que se compra a granel.
+          </p>
           <table className="tabela">
             <thead>
               <tr>
                 <th>Consumível</th>
                 <th>Máquina</th>
-                <th className="w-44 num">Preço</th>
+                <th className="w-32 num">
+                  Preço da embalagem
+                  <Ajuda texto="O que custa o frasco, a bobina ou a caixa, tal como vem na factura." />
+                </th>
+                <th className="w-32 num">
+                  Quantidade
+                  <Ajuda texto="Quanto traz a embalagem, na unidade do consumível: ml de tinta, cm² de papel, metros de linha." />
+                </th>
+                <th className="w-40 num">
+                  Preço por unidade
+                  <Ajuda texto="Calculado da embalagem. Só se escreve quando a embalagem fica em branco." />
+                </th>
                 <th>Estimativa</th>
               </tr>
             </thead>
@@ -394,12 +415,45 @@ export default function EditorParametros() {
                   <td className="text-cinza">{p.maquinas.find((m) => m.id === c.maquinaId)?.nome.split(" (")[0]}</td>
                   <td>
                     <CampoNumero
-                      valor={c.preco}
-                      sufixo={`€/${c.unidade}`}
+                      valor={c.embalagemPreco}
+                      sufixo="€"
+                      vazio
                       estimativa={c.estimativa}
-                      aoMudar={(n) => mudar((d) => void (d.consumiveis[i].preco = n ?? 0))}
+                      aoMudar={(n) => mudar((d) => void (d.consumiveis[i].embalagemPreco = n))}
                     />
-                    <div className="mt-0.5 text-right text-[11px] text-cinza">{eurosFino(c.preco)}</div>
+                  </td>
+                  <td>
+                    <CampoNumero
+                      valor={c.embalagemQtd}
+                      sufixo={c.unidade}
+                      vazio
+                      estimativa={c.estimativa}
+                      aoMudar={(n) => mudar((d) => void (d.consumiveis[i].embalagemQtd = n))}
+                    />
+                  </td>
+                  {/* Com embalagem, o preço por unidade é uma conta e não um
+                      campo: deixá-lo editável convidava a que os dois deixassem
+                      de bater certo e ninguém soubesse qual valia. */}
+                  <td>
+                    {temEmbalagem(c) ? (
+                      <div className="py-1.5 text-right">
+                        <div className="text-sm tabular-nums">
+                          {eurosFino(precoConsumivel(c))}
+                          <span className="ml-1 text-xs text-cinza">/{c.unidade}</span>
+                        </div>
+                        <div className="text-[11px] text-cinza">calculado</div>
+                      </div>
+                    ) : (
+                      <>
+                        <CampoNumero
+                          valor={c.preco}
+                          sufixo={`€/${c.unidade}`}
+                          estimativa={c.estimativa}
+                          aoMudar={(n) => mudar((d) => void (d.consumiveis[i].preco = n ?? 0))}
+                        />
+                        <div className="mt-0.5 text-right text-[11px] text-cinza">{eurosFino(c.preco)}</div>
+                      </>
+                    )}
                   </td>
                   <td>
                     <Interruptor ligado={c.estimativa} aoMudar={(v) => mudar((d) => void (d.consumiveis[i].estimativa = v))} rotulo="" />
