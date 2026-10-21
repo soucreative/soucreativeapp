@@ -47,6 +47,28 @@ export default function Documento() {
     return { porLinha, racio: racio && racio > 1.0005 ? racio : null };
   }, [p, o, r]);
   const racioBalcao = balcao?.racio ?? null;
+
+  // O mesmo trabalho encomendado outra vez, com a arte e o setup já feitos.
+  //
+  // Para um parceiro que revende, é o número que decide: a primeira encomenda
+  // paga a digitalização e o acerto da máquina, as seguintes não. Sem isto o
+  // parceiro olha para o preço da primeira e conclui que é caro, quando o preço
+  // que lhe interessa é o da segunda em diante.
+  const repeticao = useMemo(() => {
+    if (!o || !r || o.tipoCliente !== "parceiro") return null;
+    // Já ser tudo repetição significa que não há primeira vez a mostrar
+    if (o.linhas.every((l) => l.aplicacoes.every((a) => a.jaProduzido))) return null;
+    const comoRepeticao = calcularOrcamento(p, {
+      ...o,
+      linhas: o.linhas.map((l) => ({
+        ...l,
+        aplicacoes: l.aplicacoes.map((a) => ({ ...a, jaProduzido: true })),
+      })),
+    });
+    const porLinha = new Map(comoRepeticao.linhas.map((l) => [l.linha.id, l.total]));
+    const racio = r.total > 0 ? comoRepeticao.total / r.total : null;
+    return { porLinha, racio: racio && racio < 0.9995 ? racio : null };
+  }, [p, o, r]);
   const { modelos } = useModelos();
 
   if (!carregado) return null;
@@ -81,6 +103,18 @@ export default function Documento() {
     // para a diferença ser a que foi proposta e não a de hoje
     const unitario = (totalBalcao / l.total) * precoUnit(l);
     return unitario > precoUnit(l) * 1.0005 ? unitario : undefined;
+  };
+
+  /** O que esta linha custaria se o trabalho já estivesse feito */
+  const precoRepeticao = (l: (typeof r.linhas)[number]) => {
+    if (!repeticao || l.qtdFaturada <= 0 || l.total <= 0) return undefined;
+    if (l.linha.aplicacoes.every((a) => a.jaProduzido)) return undefined;
+    const totalRep = repeticao.porLinha.get(l.linha.id);
+    if (totalRep == null) return undefined;
+    const unitario = (totalRep / l.total) * precoUnit(l);
+    return unitario < precoUnit(l) * 0.9995
+      ? { precoUnit: unitario, total: unitario * l.qtdFaturada }
+      : undefined;
   };
   // Linhas que entram na tabela: as normais e, depois de ganho, a opção escolhida
   const linhasTabela = r.linhas.filter((l) => l.incluida);
@@ -184,7 +218,7 @@ export default function Documento() {
             </thead>
             <tbody>
               {linhasTabela.map((l) => (
-                <LinhaDoc key={l.linha.id} l={l} iva={p.iva} precoUnit={precoUnit(l)} precoTabela={precoTabela(l)} precoBalcao={precoBalcao(l)} total={totalLinha(l)} imagem={imagemDe(l)} alternativas={alternativasDe(l)} reparticao={reparticaoDe(l)} pvp={o.tipoCliente === "parceiro" ? l.linha.pvpRecomendado : undefined} />
+                <LinhaDoc key={l.linha.id} l={l} iva={p.iva} precoUnit={precoUnit(l)} precoTabela={precoTabela(l)} precoBalcao={precoBalcao(l)} repeticao={precoRepeticao(l)} total={totalLinha(l)} imagem={imagemDe(l)} alternativas={alternativasDe(l)} reparticao={reparticaoDe(l)} pvp={o.tipoCliente === "parceiro" ? l.linha.pvpRecomendado : undefined} />
               ))}
               {r.vendaCriacao > 0 && (
                 <tr className="border-b border-linha">
@@ -228,6 +262,7 @@ export default function Documento() {
                         precoUnit={precoUnit(l)}
                         precoTabela={precoTabela(l)}
                         precoBalcao={precoBalcao(l)}
+                        repeticao={precoRepeticao(l)}
                         total={totalLinha(l)}
                         imagem={imagemDe(l)}
                         alternativas={alternativasDe(l)}
@@ -295,6 +330,16 @@ export default function Documento() {
                 <span className="text-cinza">Total s/ IVA</span>
                 <span className="tabular-nums">{euros(r.total * fator)}</span>
               </div>
+              {/* O total de uma encomenda seguinte, para o parceiro ver que a
+                  primeira é a cara e o resto não */}
+              {repeticao?.racio && (
+                <div className="flex justify-between border-t border-linha pt-1 text-verde">
+                  <span>Se repetir esta encomenda</span>
+                  <span className="tabular-nums font-medium">
+                    {euros(r.total * fator * repeticao.racio)}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-cinza">IVA {percent(p.iva)}</span>
                 <span className="tabular-nums">{euros(r.iva * fator)}</span>
@@ -357,6 +402,7 @@ function LinhaDoc({
   precoUnit,
   precoTabela,
   precoBalcao,
+  repeticao,
   total,
   iva,
   imagem,
@@ -370,6 +416,8 @@ function LinhaDoc({
   precoTabela?: number;
   /** O que custaria ao balcão, quando este cliente tem condição melhor */
   precoBalcao?: number;
+  /** O que custa quando o trabalho se repete, com a arte e o setup já feitos */
+  repeticao?: { precoUnit: number; total: number };
   total: number;
   iva: number;
   imagem?: string;
@@ -404,6 +452,19 @@ function LinhaDoc({
             {descreverAplicacao(a.aplicacao)}
           </div>
         ))}
+        {/* O preço da repetição é o que decide para quem revende: a primeira
+            encomenda paga a digitalização e o acerto da máquina, as seguintes
+            não. Sem isto olha-se para o preço da primeira e conclui-se que é
+            caro. */}
+        {repeticao && (
+          <div className="mt-1.5 rounded bg-beige-claro/70 px-2 py-1 text-xs">
+            <span className="text-cinza">Em repetição, com a arte e o setup já feitos: </span>
+            <b>{euros(repeticao.precoUnit)}/un</b> ({euros(repeticao.total)}) ·{" "}
+            <span className="font-medium text-verde">
+              menos {percent(1 - repeticao.precoUnit / precoUnit)}
+            </span>
+          </div>
+        )}
         {alternativas && alternativas.length > 0 && (
           <div className="mt-1.5 rounded bg-beige-claro/70 px-2 py-1 text-xs">
             <span className="text-cinza">Noutras quantidades: </span>
