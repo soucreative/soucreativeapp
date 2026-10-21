@@ -282,6 +282,17 @@ export function precoConsumivel(c: Pick<Consumivel, "preco" | "embalagemPreco" |
   return c.preco;
 }
 
+/**
+ * Consumíveis que o motor sabe gastar. Apagar um destes não dá erro nenhum —
+ * o custo dele desaparece em silêncio e todos os orçamentos ficam mais
+ * baratos sem que ninguém perceba porquê. Por isso a interface avisa antes.
+ */
+export const CONSUMIVEIS_DO_MOTOR = [
+  "gtx_ciano", "gtx_magenta", "gtx_amarelo", "gtx_preto", "gtx_branco",
+  "gtx_manutencao", "dtg_pretrat", "dtf_filme", "dtf_po",
+  "sub_tinta", "sub_papel", "sub_fita", "bord_linha", "bord_entretela", "cricut_vinil",
+] as const;
+
 /** As quatro tintas de cor da GTX. O branco é à parte: só entra em peça escura. */
 export const TINTAS_COR = ["gtx_ciano", "gtx_magenta", "gtx_amarelo", "gtx_preto"] as const;
 

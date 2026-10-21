@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { CampoNumero, EtiquetaEstimativa, Titulo } from "@/app/(app)/producao/_components/campos";
-import { calcularOrcamento, precoConsumivel } from "@/lib/producao/engine";
+import { calcularOrcamento, precoConsumivel, CONSUMIVEIS_DO_MOTOR } from "@/lib/producao/engine";
 import { numero } from "@/lib/producao/format";
 import { atualizarParametros, atualizarStock, novoId, useDados } from "@/app/(app)/producao/_lib/store";
 import { EstadoGravacao } from "@/app/(app)/producao/_components/estado-gravacao";
@@ -74,6 +74,7 @@ export default function Consumiveis() {
                   <th className="num">Reservado</th>
                   <th className="num">Fica</th>
                   <th>Estado</th>
+                  <th className="w-10" />
                 </tr>
               </thead>
               <tbody>
@@ -152,6 +153,9 @@ export default function Consumiveis() {
                         </td>
                         <td className="num">{fica == null ? "—" : `${numero(fica)} ${c.unidade}`}</td>
                         <td className={estado.cl}>{estado.t}</td>
+                        <td>
+                          <ApagarConsumivel id={c.id} nome={c.nome} temStock={(c.stock ?? 0) > 0 || res > 0} />
+                        </td>
                       </tr>
                     );
                   })}
@@ -237,5 +241,51 @@ function NovoConsumivel({ maquinaId }: { maquinaId: string }) {
         Entra na lista para se contar o stock. Para entrar no custo de uma técnica, é preciso dizer nos Parâmetros quanto dela se gasta.
       </p>
     </div>
+  );
+}
+
+/**
+ * Apagar um consumível.
+ *
+ * Confirma-se sempre, e avisa-se quando o consumível é um dos que o motor sabe
+ * gastar: apagá-lo não dá erro nenhum — o custo dele desaparece em silêncio e
+ * todos os orçamentos ficam mais baratos sem que ninguém perceba porquê.
+ */
+function ApagarConsumivel({ id, nome, temStock }: { id: string; nome: string; temStock: boolean }) {
+  const [confirmar, setConfirmar] = useState(false);
+  const doMotor = (CONSUMIVEIS_DO_MOTOR as readonly string[]).includes(id);
+
+  if (!confirmar) {
+    return (
+      <button
+        type="button"
+        className="p-1 text-cinza/50 transition hover:text-alerta"
+        title={`Apagar ${nome}`}
+        onClick={() => setConfirmar(true)}
+      >
+        ✕
+      </button>
+    );
+  }
+
+  return (
+    <span className="flex items-center gap-2 whitespace-nowrap text-xs">
+      <button
+        type="button"
+        className="rounded px-2 py-1 text-white"
+        style={{ background: "var(--color-alerta)" }}
+        onClick={() => atualizarParametros((d) => void (d.consumiveis = d.consumiveis.filter((c) => c.id !== id)))}
+      >
+        Apagar
+      </button>
+      <button type="button" className="text-cinza hover:text-tinta" onClick={() => setConfirmar(false)}>
+        Não
+      </button>
+      {(doMotor || temStock) && (
+        <span className="text-mostarda">
+          {doMotor ? "entra no custo das técnicas" : "tem stock contado"}
+        </span>
+      )}
+    </span>
   );
 }
