@@ -452,7 +452,6 @@ export default function EditorParametros() {
                   <th className="num">Margem peça</th>
                   <th className="num">Margem personalização</th>
                   <th className="num">Fator hora</th>
-                  <th className="num">Preço mínimo</th>
                 </tr>
               </thead>
               <tbody>
@@ -474,13 +473,6 @@ export default function EditorParametros() {
                     </td>
                     <td>
                       <CampoNumero valor={t.fatorHora} aoMudar={(n) => mudar((d) => void (d.tiposCliente[i].fatorHora = n ?? 1))} />
-                    </td>
-                    <td>
-                      <Interruptor
-                        ligado={t.aplicaMinimo}
-                        aoMudar={(v) => mudar((d) => void (d.tiposCliente[i].aplicaMinimo = v))}
-                        rotulo="aplica"
-                      />
                     </td>
                   </tr>
                 ))}

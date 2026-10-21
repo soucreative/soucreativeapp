@@ -130,10 +130,6 @@ export interface ParamTipoCliente {
   margemProduto: number;
   margemPersonalizacao: number;
   fatorHora: number;
-  // O preço mínimo por peça só faz sentido onde há custo de atendimento por
-  // peça — ou seja, ao balcão. Quem compra como empresa ou parceiro não deve
-  // levar com um mínimo pensado para uma venda avulsa.
-  aplicaMinimo: boolean;
   nota: string;
 }
 

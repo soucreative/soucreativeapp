@@ -310,7 +310,18 @@ export function calcularAplicacao(
 ): ResultadoAplicacao {
   const pt = paramTecnica(params, a.tecnica);
   const tc = tipoClienteDe(params, tipoCliente);
-  const esc = escalaoDe(params, quantidade);
+  const tipoSetup = tipoSetupDe(a);
+
+  // Uma repetição nunca entra no escalão da peça única. A arte e o setup já
+  // estão feitos de uma encomenda anterior, e repetir uma peça não nos custa
+  // mais do que repetir duas: agravar aí seria penalizar o cliente que volta,
+  // que é exactamente o que queremos que aconteça o ano todo.
+  const eRepeticao = tipoSetup === "repeticao";
+  const escBruto = escalaoDe(params, quantidade);
+  const esc =
+    eRepeticao && escBruto === params.escaloes[0] && params.escaloes.length > 1
+      ? params.escaloes[1]
+      : escBruto;
   const n = maquinasEmParalelo(params, a, quantidade);
   const maquinasIds = (maquinasDaTecnica(params, a.tecnica).length ? maquinasDaTecnica(params, a.tecnica) : [pt.maquinaId]).slice(0, n);
   // Custo/hora médio das máquinas usadas: cada peça ocupa uma delas
@@ -335,14 +346,13 @@ export function calcularAplicacao(
       (peca.operadorMin / 60) * pvOp +
       (peca.designerMin / 60) * pvDes) *
     (1 - esc.descontoPersonalizacao);
-  // O mínimo por peça existe para cobrir o atendimento de uma venda avulsa ao
-  // balcão. Não se aplica a empresas nem a parceiros, e deixa de se aplicar
-  // acima da quantidade definida nos parâmetros: numa série, um mínimo pensado
-  // para uma peça solta só inflaciona o orçamento.
-  const minimoAplicavel = tc.aplicaMinimo && quantidade <= pt.minimoAteQtd;
+  // O piso de preço cobre o atendimento de uma encomenda minúscula, que é um
+  // custo fixo e não proporcional — por isso é um valor em euros e não uma
+  // percentagem. Vale para qualquer cliente: uma peça única custa o que custa,
+  // compre-a quem comprar. O que não leva piso é a repetição.
+  const minimoAplicavel = !eRepeticao && quantidade <= pt.minimoAteQtd;
   const vendaPeca = minimoAplicavel ? Math.max(vendaPecaSemMinimo, pt.minimoPorPeca) : vendaPecaSemMinimo;
 
-  const tipoSetup = tipoSetupDe(a);
   const pct = params.setups[tipoSetup];
   const digitalizacao = a.tecnica === "bordado" ? params.complexidadeBordado[a.complexidade ?? "medio"] : 0;
   const setupDesignerMin = (pt.setupDesignerMin + digitalizacao) * pct;

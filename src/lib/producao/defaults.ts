@@ -249,7 +249,6 @@ export const PARAMETROS_INICIAIS: Parametros = {
       margemProduto: 0.55,
       margemPersonalizacao: 0.6,
       fatorHora: 1.1,
-      aplicaMinimo: true,
       nota: "Custo de atendimento alto por euro faturado.",
     },
     {
@@ -258,7 +257,6 @@ export const PARAMETROS_INICIAIS: Parametros = {
       margemProduto: 0.4,
       margemPersonalizacao: 0.5,
       fatorHora: 1,
-      aplicaMinimo: false,
       nota: "Referência.",
     },
     {
@@ -267,7 +265,6 @@ export const PARAMETROS_INICIAIS: Parametros = {
       margemProduto: 0.4,
       margemPersonalizacao: 0.4,
       fatorHora: 1,
-      aplicaMinimo: false,
       nota: "Margem mais baixa em troca de arte pronta, produtos de catálogo e mínimo de encomenda.",
     },
   ],
@@ -277,7 +274,7 @@ export const PARAMETROS_INICIAIS: Parametros = {
   // Dois escalões com o mesmo desconto são um escalão só — por isso a escada
   // desce sempre, em vez de repetir zeros como fazia antes do 15.
   escaloes: [
-    { ate: 1, nome: "1", descontoPersonalizacao: 0 },
+    { ate: 1, nome: "1", descontoPersonalizacao: -0.1 },
     { ate: 6, nome: "2–6", descontoPersonalizacao: 0 },
     { ate: 14, nome: "7–14", descontoPersonalizacao: 0.03 },
     { ate: 49, nome: "15–49", descontoPersonalizacao: 0.06 },
