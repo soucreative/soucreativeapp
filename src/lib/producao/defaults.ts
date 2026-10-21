@@ -5,7 +5,7 @@ import type { Artigo, Parametros } from "./types";
 // Pessoas, horas e FSE vêm do SOU_Calculadora_v27.xlsx (folha Custo hora).
 
 export const PARAMETROS_INICIAIS: Parametros = {
-  versao: 4,
+  versao: 5,
   empresa: {
     nome: "SOU Creative",
     nif: "",
@@ -129,7 +129,7 @@ export const PARAMETROS_INICIAIS: Parametros = {
     { id: "gtx_preto", nome: "Tinta GTX preto", unidade: "ml", embalagemPreco: 230, embalagemQtd: 700, preco: 0.3286, maquinaId: "gtx", estimativa: false, nota: "230 € por frasco de 700 cc" },
     { id: "gtx_branco", nome: "Tinta GTX branco", unidade: "ml", embalagemPreco: 379, embalagemQtd: 1400, preco: 0.2707, maquinaId: "gtx", estimativa: false, nota: "379 € pelos dois cartuchos de 700 cc" },
     { id: "dtg_pretrat", nome: "Líquido de pré-tratamento", unidade: "ml", embalagemPreco: 16, embalagemQtd: 1000, preco: 0.016, maquinaId: "gtx", estimativa: false, nota: "16 € por litro" },
-    { id: "gtx_manutencao", nome: "Kit de manutenção GTX", unidade: "un", embalagemPreco: 330, embalagemQtd: 25000, preco: 0.0132, maquinaId: "gtx", estimativa: false, nota: "330 € a cada 25 000 impressões" },
+    { id: "gtx_manutencao", nome: "Kit de manutenção GTX", unidade: "un", embalagemPreco: 330, embalagemQtd: 1, preco: 330, maquinaId: "gtx", estimativa: false, aCadaImpressoes: 25000, nota: "330 € o kit, a cada 25 000 impressões" },
     { id: "dtf_filme", nome: "Filme DTF", unidade: "cm²", preco: 0.0004, maquinaId: "gtx", estimativa: true },
     { id: "dtf_po", nome: "Pó adesivo DTF", unidade: "g", preco: 0.015, maquinaId: "gtx", estimativa: true },
     { id: "sub_tinta", nome: "Tinta Sawgrass", unidade: "ml", embalagemPreco: 50, embalagemQtd: 31, preco: 1.6129, maquinaId: "sawgrass", estimativa: false, nota: "50 € por tinteiro de 31 ml" },
@@ -225,6 +225,9 @@ export const PARAMETROS_INICIAIS: Parametros = {
         trocaCorMin: 0.15,
         linhaMPor1000: 6,
         entretelaFator: 1.5,
+        // A entretela corta-se do tamanho do bastidor, não do desenho: um logo
+        // pequeno gasta na mesma a folha toda do bastidor.
+        entretelaMinCm2: 225, // bastidor de 15 × 15 cm
         pontosPorCm2: 180, // para estimar quando ainda não há ficheiro
         atencaoOperadorPct: 0.15, // fatia do tempo de máquina em que o operador está preso; no resto faz outras coisas
         paraleloAPartirDe: 10, // a partir de quantas peças o automático usa as duas máquinas
@@ -368,6 +371,21 @@ export function completarParametros(guardado: Partial<Parametros>): Parametros {
       ...guardado,
       versao: 4,
       consumiveis: guardado.consumiveis?.filter((c) => c.id !== "gtx_cmyk"),
+    };
+  }
+  // Versão 5: o kit de manutenção contava-se em impressões — 330 € por 25 000
+  // "unidades" — e para contar stock era preciso saber quantas impressões
+  // restavam. Passa a ser 1 kit a 330 €, gasto a cada 25 000 impressões, que é
+  // como se compra e como se conta na prateleira.
+  if ((guardado.versao ?? 1) < 5) {
+    guardado = {
+      ...guardado,
+      versao: 5,
+      consumiveis: guardado.consumiveis?.map((c) =>
+        c.id === "gtx_manutencao"
+          ? { ...c, embalagemPreco: 330, embalagemQtd: 1, preco: 330, aCadaImpressoes: 25000 }
+          : c,
+      ),
     };
   }
   const juntarPorId = <T extends { id: string }>(g: T[] | undefined, b: T[]) =>

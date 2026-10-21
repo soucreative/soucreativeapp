@@ -45,6 +45,7 @@ const temEmbalagem = (c: { embalagemPreco?: number; embalagemQtd?: number }) =>
   c.embalagemPreco != null && c.embalagemQtd != null && c.embalagemQtd > 0;
 
 const NOMES_K: Record<string, string> = {
+  entretelaMinCm2: "Entretela mínima (bastidor, cm²)",
   cmykMlCm2: "Tinta CMYK (ml/cm² a 100%)",
   brancoMlCm2: "Tinta branca (ml/cm² a 100%)",
   pretratMlCm2: "Pré-tratamento (ml/cm²)",

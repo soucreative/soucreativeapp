@@ -72,6 +72,7 @@ export default function Consumiveis() {
                   <th className="w-28 num">Traz</th>
                   <th className="w-32 num">Preço/un</th>
                   <th className="w-24 num">Mistura</th>
+                  <th className="w-28 num" title="Gasta-se um a cada tantas impressões: o kit, a limpeza, as esponjas">A cada N impr.</th>
                   <th className="w-36 num">Stock atual</th>
                   <th className="w-36 num">Stock mínimo</th>
                   <th className="num">Reservado</th>
@@ -174,6 +175,16 @@ export default function Consumiveis() {
                           ) : (
                             <span className="block text-right text-xs text-cinza/50">—</span>
                           )}
+                        </td>
+                        {/* Desgaste da máquina: gasta-se com o uso e não com o
+                            tamanho do trabalho */}
+                        <td>
+                          <CampoNumero
+                            valor={c.aCadaImpressoes}
+                            vazio
+                            min={0}
+                            aoMudar={(n) => mexer(c.id, (x) => void (x.aCadaImpressoes = n))}
+                          />
                         </td>
                         <td>
                           <CampoNumero

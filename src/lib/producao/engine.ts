@@ -198,7 +198,6 @@ export function calcularPeca(params: Parametros, a: Aplicacao, emParalelo = 1): 
       const escura = !!a.pecaEscura;
       // Os ml medidos no software da Brother mandam sobre a estimativa por área
       repartirCor(consumos, a.tintaCorMl ?? area * cob * k.cmykMlCm2);
-      consumos.gtx_manutencao = 1; // kit de manutenção, por impressão
       if (escura) {
         consumos.gtx_branco = a.tintaBrancoMl ?? area * cob * k.brancoMlCm2;
         consumos.dtg_pretrat = area * k.pretratMlCm2;
@@ -213,14 +212,13 @@ export function calcularPeca(params: Parametros, a: Aplicacao, emParalelo = 1): 
       consumos.gtx_branco = a.tintaBrancoMl ?? area * cob * k.brancoMlCm2;
       consumos.dtf_filme = area * k.filmeFator;
       consumos.dtf_po = area * cob * k.poGCm2;
-      consumos.gtx_manutencao = 1;
       maquinaMin = (area / A4_CM2) * k.impressaoMinA4 + k.curaMin + k.prensaMin;
       operadorMin += k.prensaMin;
       break;
     }
     case "sublimacao": {
       consumos.sub_tinta = area * cob * k.tintaMlCm2;
-      consumos.sub_papel = area * k.papelFator;
+      repartirMistura(consumos, params, "papel_sublimacao", area * k.papelFator, "sub_papel");
       consumos.sub_fita = 1;
       const prensa =
         a.suporte === "caneca" ? k.prensaMinCaneca : a.suporte === "rigido" ? k.prensaMinRigido : k.prensaMinTexteis;
@@ -241,7 +239,7 @@ export function calcularPeca(params: Parametros, a: Aplicacao, emParalelo = 1): 
       operadorMin += (maquinaMin * k.atencaoOperadorPct) / Math.max(1, emParalelo);
       consumos.bord_linha = (pontos / 1000) * k.linhaMPor1000;
       const areaEntretela = area > 0 ? area : pontos / k.pontosPorCm2;
-      repartirMistura(consumos, params, "entretela", areaEntretela * k.entretelaFator, "bord_entretela");
+      repartirMistura(consumos, params, "entretela", Math.max(k.entretelaMinCm2 ?? 0, areaEntretela * k.entretelaFator), "bord_entretela");
       break;
     }
     case "cricut": {
@@ -258,6 +256,16 @@ export function calcularPeca(params: Parametros, a: Aplicacao, emParalelo = 1): 
     }
   }
 
+
+  // Desgaste da máquina: o que se gasta com o uso e não com o tamanho do
+  // trabalho. Uma impressão por peça, e cada consumível diz a que ritmo se
+  // consome — o kit a cada 25 000, as esponjas a cada tantas. Escrito aqui
+  // em vez de técnica a técnica, para acrescentar um não obrigar a mexer no
+  // motor.
+  for (const c of params.consumiveis) {
+    if (c.maquinaId !== pt.maquinaId || !c.aCadaImpressoes || c.aCadaImpressoes <= 0) continue;
+    consumos[c.id] = (consumos[c.id] ?? 0) + 1 / c.aCadaImpressoes;
+  }
   for (const id of Object.keys(consumos)) consumos[id] *= 1 + pt.desperdicioPct;
 
   // Nomes individuais: cada peça tem o seu ficheiro, a preparar e a carregar

@@ -106,6 +106,11 @@ export interface Consumivel {
   // estimado de sempre, para não mudar preços sem ninguém decidir.
   grupoMistura?: string;
   pesoMistura?: number;
+  // Consumíveis que se gastam com o uso da máquina e não com o tamanho do
+  // trabalho: o kit de manutenção, o líquido de limpeza, as esponjas. Diz
+  // de quantas em quantas impressões se gasta um. Vazio = não se gasta
+  // sozinho, e fica só a contar stock.
+  aCadaImpressoes?: number;
   maquinaId: string;
   estimativa: boolean;
   stock?: number;
