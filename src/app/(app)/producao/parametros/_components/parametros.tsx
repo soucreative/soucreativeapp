@@ -416,6 +416,9 @@ export default function EditorParametros() {
                   <Rotulado rotulo="Mínimo por peça">
                     <CampoNumero valor={t.minimoPorPeca} sufixo="€" aoMudar={(n) => mudar((d) => void (d.tecnicas[i].minimoPorPeca = n ?? 0))} />
                   </Rotulado>
+                  <Rotulado rotulo="Mínimo só até (un.)">
+                    <CampoNumero valor={t.minimoAteQtd} aoMudar={(n) => mudar((d) => void (d.tecnicas[i].minimoAteQtd = n ?? 0))} />
+                  </Rotulado>
                   <Rotulado rotulo="Área máxima (cm)">
                     <div className="flex gap-1">
                       <CampoNumero valor={t.areaMaxCm[0]} aoMudar={(n) => mudar((d) => void (d.tecnicas[i].areaMaxCm[0] = n ?? 0))} />
@@ -449,6 +452,7 @@ export default function EditorParametros() {
                   <th className="num">Margem peça</th>
                   <th className="num">Margem personalização</th>
                   <th className="num">Fator hora</th>
+                  <th className="num">Preço mínimo</th>
                 </tr>
               </thead>
               <tbody>
@@ -470,6 +474,13 @@ export default function EditorParametros() {
                     </td>
                     <td>
                       <CampoNumero valor={t.fatorHora} aoMudar={(n) => mudar((d) => void (d.tiposCliente[i].fatorHora = n ?? 1))} />
+                    </td>
+                    <td>
+                      <Interruptor
+                        ligado={t.aplicaMinimo}
+                        aoMudar={(v) => mudar((d) => void (d.tiposCliente[i].aplicaMinimo = v))}
+                        rotulo="aplica"
+                      />
                     </td>
                   </tr>
                 ))}

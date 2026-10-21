@@ -145,6 +145,7 @@ export const PARAMETROS_INICIAIS: Parametros = {
       manuseamentoMin: 2,
       desperdicioPct: 0.1,
       minimoPorPeca: 3,
+      minimoAteQtd: 14,
       areaMaxCm: [40, 50],
       k: {
         cmykMlCm2: 0.005, // ml por cm² a 100% de cobertura
@@ -165,6 +166,7 @@ export const PARAMETROS_INICIAIS: Parametros = {
       manuseamentoMin: 2,
       desperdicioPct: 0.1,
       minimoPorPeca: 2.5,
+      minimoAteQtd: 14,
       areaMaxCm: [40, 50],
       k: {
         cmykMlCm2: 0.005,
@@ -185,6 +187,7 @@ export const PARAMETROS_INICIAIS: Parametros = {
       manuseamentoMin: 1.5,
       desperdicioPct: 0.1,
       minimoPorPeca: 2,
+      minimoAteQtd: 14,
       areaMaxCm: [29.7, 42],
       k: {
         tintaMlCm2: 0.00025, // 0,157 ml num A4 (folha de custos da SOU)
@@ -205,6 +208,7 @@ export const PARAMETROS_INICIAIS: Parametros = {
       manuseamentoMin: 2,
       desperdicioPct: 0.05,
       minimoPorPeca: 3,
+      minimoAteQtd: 14,
       areaMaxCm: [30, 40],
       k: {
         pontosMinuto: 700, // velocidade efectiva, não a máxima da máquina
@@ -225,6 +229,7 @@ export const PARAMETROS_INICIAIS: Parametros = {
       manuseamentoMin: 1,
       desperdicioPct: 0.1,
       minimoPorPeca: 2,
+      minimoAteQtd: 14,
       areaMaxCm: [30, 60],
       k: {
         vinilFator: 1.3,
@@ -244,6 +249,7 @@ export const PARAMETROS_INICIAIS: Parametros = {
       margemProduto: 0.55,
       margemPersonalizacao: 0.6,
       fatorHora: 1.1,
+      aplicaMinimo: true,
       nota: "Custo de atendimento alto por euro faturado.",
     },
     {
@@ -252,6 +258,7 @@ export const PARAMETROS_INICIAIS: Parametros = {
       margemProduto: 0.4,
       margemPersonalizacao: 0.5,
       fatorHora: 1,
+      aplicaMinimo: false,
       nota: "Referência.",
     },
     {
@@ -260,6 +267,7 @@ export const PARAMETROS_INICIAIS: Parametros = {
       margemProduto: 0.4,
       margemPersonalizacao: 0.4,
       fatorHora: 1,
+      aplicaMinimo: false,
       nota: "Margem mais baixa em troca de arte pronta, produtos de catálogo e mínimo de encomenda.",
     },
   ],
@@ -333,6 +341,12 @@ export function completarParametros(guardado: Partial<Parametros>): Parametros {
     tecnicas: base.tecnicas.map((b) => {
       const g = guardado.tecnicas?.find((t) => t.tecnica === b.tecnica);
       return g ? { ...b, ...g, maquinasIds: g.maquinasIds ?? b.maquinasIds, k: { ...b.k, ...g.k } } : b;
+    }),
+    // Sem isto, o array guardado substituía o do código inteiro e qualquer
+    // campo novo nascia em falta para quem já tinha parâmetros gravados
+    tiposCliente: base.tiposCliente.map((b) => {
+      const g = guardado.tiposCliente?.find((t) => t.id === b.id);
+      return g ? { ...b, ...g } : b;
     }),
   };
 }

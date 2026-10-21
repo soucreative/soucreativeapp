@@ -113,6 +113,11 @@ export interface ParamTecnica {
   manuseamentoMin: number; // operador por peça: carregar, posicionar, prensar
   desperdicioPct: number;
   minimoPorPeca: number; // preço mínimo da aplicação por peça (venda)
+  // Quantidade até à qual o mínimo ainda se aplica, inclusive. Acima disso o
+  // preço segue o cálculo: num trabalho de série, um mínimo pensado para uma
+  // peça solta deixa de fazer sentido e passa a inflacionar o orçamento.
+  // 0 = sem limite, o mínimo aplica-se sempre.
+  minimoAteQtd: number;
   areaMaxCm: [number, number]; // largura x altura máximas
   // Coeficientes de consumo e tempo. O significado de cada um está em engine.ts.
   k: Record<string, number>;
@@ -125,6 +130,10 @@ export interface ParamTipoCliente {
   margemProduto: number;
   margemPersonalizacao: number;
   fatorHora: number;
+  // O preço mínimo por peça só faz sentido onde há custo de atendimento por
+  // peça — ou seja, ao balcão. Quem compra como empresa ou parceiro não deve
+  // levar com um mínimo pensado para uma venda avulsa.
+  aplicaMinimo: boolean;
   nota: string;
 }
 

@@ -335,7 +335,13 @@ export function calcularAplicacao(
       (peca.operadorMin / 60) * pvOp +
       (peca.designerMin / 60) * pvDes) *
     (1 - esc.descontoPersonalizacao);
-  const vendaPeca = Math.max(vendaPecaSemMinimo, pt.minimoPorPeca);
+  // O mínimo por peça existe para cobrir o atendimento de uma venda avulsa ao
+  // balcão. Não se aplica a empresas nem a parceiros, e deixa de se aplicar
+  // acima da quantidade definida nos parâmetros: numa série, um mínimo pensado
+  // para uma peça solta só inflaciona o orçamento.
+  const minimoAplicavel =
+    tc.aplicaMinimo && (pt.minimoAteQtd <= 0 || quantidade <= pt.minimoAteQtd);
+  const vendaPeca = minimoAplicavel ? Math.max(vendaPecaSemMinimo, pt.minimoPorPeca) : vendaPecaSemMinimo;
 
   const tipoSetup = tipoSetupDe(a);
   const pct = params.setups[tipoSetup];

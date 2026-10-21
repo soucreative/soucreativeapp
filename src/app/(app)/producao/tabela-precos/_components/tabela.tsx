@@ -207,7 +207,11 @@ export default function TabelaPrecos() {
         {(["dtg", "dtf", "sublimacao", "cricut"] as Tecnica[]).map((t) => (
           <Seccao key={t} titulo={NOME_TECNICA[t]} resumo={resumoArea(t)} aberta={abertas.includes(t)} alternar={() => alternar(t)}>
             <p className="mb-3 text-xs text-cinza">
-              Área máxima {paramTecnica(p, t).areaMaxCm.join(" × ")} cm · mínimo por peça {euros(paramTecnica(p, t).minimoPorPeca)}
+              Área máxima {paramTecnica(p, t).areaMaxCm.join(" × ")} cm · mínimo por peça{" "}
+              {euros(paramTecnica(p, t).minimoPorPeca)}
+              {paramTecnica(p, t).minimoAteQtd > 0 && ` até ${paramTecnica(p, t).minimoAteQtd} un.`}
+              {!p.tiposCliente.every((c) => c.aplicaMinimo) &&
+                `, só para ${p.tiposCliente.filter((c) => c.aplicaMinimo).map((c) => c.nome.toLowerCase()).join(" e ") || "ninguém"}`}
             </p>
             <table className="tabela">
               <thead>
