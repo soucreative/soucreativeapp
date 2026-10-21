@@ -9,6 +9,7 @@ import { SeletorArtigo } from "@/app/(app)/producao/_components/seletor-artigo";
 import { ImagemArtigo } from "@/app/(app)/producao/_components/imagem-artigo";
 import { Avisos, CampoNumero, EtiquetaEstimativa, Interruptor, Rotulado } from "@/app/(app)/producao/_components/campos";
 import { calcularOrcamento, custosPorRubrica, precosPorQuantidade, pvpSugerido, type ResultadoLinha } from "@/lib/producao/engine";
+import { procurarRepeticao } from "@/lib/producao/historico";
 import { ESTADOS, MOTIVOS_PERDA } from "@/lib/producao/estados";
 import { dataPt, euros, horasMin, numero, percent } from "@/lib/producao/format";
 import { etapaDe, ETAPAS } from "@/lib/producao/agenda";
@@ -650,6 +651,16 @@ function EditorLinha({
             key={a.id}
             a={a}
             r={r?.aplicacoes[i]}
+            repeticao={
+              orcamento
+                ? procurarRepeticao(dadosLinha.orcamentos, {
+                    clienteId: orcamento.clienteId,
+                    orcamentoAtualId: orcamento.id,
+                    artigoId: l.artigoId,
+                    aplicacao: a,
+                  })
+                : null
+            }
             aoMudar={(fn) => mudarAplicacoes((as) => as.map((x) => (x.id === a.id ? fn(x) : x)))}
             aoRemover={() => mudarAplicacoes((as) => as.filter((x) => x.id !== a.id))}
           />

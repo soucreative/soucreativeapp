@@ -1,9 +1,12 @@
 "use client";
 
+import { useEffect } from "react";
+
 import { CampoNumero, Interruptor, Rotulado } from "@/app/(app)/producao/_components/campos";
 import { NOME_SETUP, NOME_TECNICA, TAMANHOS_A, type ResultadoAplicacao } from "@/lib/producao/engine";
-import { euros, horasMin, numero } from "@/lib/producao/format";
+import { dataPt, euros, horasMin, numero } from "@/lib/producao/format";
 import { novoId } from "@/app/(app)/producao/_lib/store";
+import type { Repeticao } from "@/lib/producao/historico";
 import type { Aplicacao, Tecnica } from "@/lib/producao/types";
 
 export const TECNICAS: Tecnica[] = ["bordado", "dtg", "dtf", "sublimacao", "cricut"];
@@ -27,15 +30,28 @@ export function novaAplicacao(tecnica: Tecnica): Aplicacao {
 export function AplicacaoEditor({
   a,
   r,
+  repeticao,
   aoMudar,
   aoRemover,
 }: {
   a: Aplicacao;
   r?: ResultadoAplicacao;
+  /** Trabalho igual encontrado no histórico ganho deste cliente */
+  repeticao?: Repeticao | null;
   aoMudar: (fn: (a: Aplicacao) => Aplicacao) => void;
   aoRemover: () => void;
 }) {
   const set = (p: Partial<Aplicacao>) => aoMudar((cur) => ({ ...cur, ...p }));
+
+  // Enquanto ninguém responder à mão, a resposta vem do histórico. Mexer nela
+  // aqui e não ao gravar faz com que o preço no ecrã seja já o preço certo.
+  const automatico = a.repeticaoManual == null;
+  const detetada = !!repeticao;
+  useEffect(() => {
+    if (!automatico || a.jaProduzido === detetada) return;
+    set({ jaProduzido: detetada });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [automatico, detetada, a.jaProduzido]);
 
   return (
     <div className="rounded-lg border border-linha bg-papel/60 p-3">
@@ -171,7 +187,37 @@ export function AplicacaoEditor({
       </div>
 
       <div className="mt-3 grid gap-2 border-t border-linha pt-3 sm:grid-cols-3">
-        <Interruptor ligado={a.jaProduzido} aoMudar={(v) => set({ jaProduzido: v })} rotulo="1. Já produzimos este grafismo nesta peça?" />
+        <div>
+          <Interruptor
+            ligado={a.jaProduzido}
+            aoMudar={(v) => set({ jaProduzido: v, repeticaoManual: v })}
+            rotulo="1. Já produzimos este grafismo nesta peça?"
+          />
+          {/* Dizer de onde veio a conclusão: a comparação é por medidas e
+              posição, não pela arte em si, e quem orçamenta tem de poder
+              discordar com conhecimento de causa */}
+          {repeticao ? (
+            <p className="mt-1 text-xs text-verde">
+              Encontrado no orçamento {repeticao.numero} ({dataPt(repeticao.data)}), ganho
+              {automatico ? "" : " — mas a resposta está à mão"}
+            </p>
+          ) : automatico ? (
+            <p className="mt-1 text-xs text-cinza">
+              Sem igual no histórico ganho deste cliente.
+            </p>
+          ) : (
+            <p className="mt-1 text-xs text-mostarda">Resposta à mão.</p>
+          )}
+          {!automatico && (
+            <button
+              type="button"
+              className="mt-0.5 text-xs text-cinza underline hover:text-verde"
+              onClick={() => set({ repeticaoManual: undefined })}
+            >
+              voltar ao automático
+            </button>
+          )}
+        </div>
         <Interruptor ligado={a.arteCliente} aoMudar={(v) => set({ arteCliente: v })} rotulo="2. A arte vem pronta do cliente?" />
         <Interruptor
           ligado={a.suporteConfigurado}

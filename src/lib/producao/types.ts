@@ -241,6 +241,10 @@ export interface Aplicacao {
   // Cada peça leva um texto diferente (nomes, números): trabalho a mais por peça
   nomesIndividuais?: boolean;
   // Setup: as três perguntas
+  // Em branco, `jaProduzido` é descoberto no histórico de orçamentos ganhos
+  // deste cliente (ver historico.ts). Quando alguém responde à mão, fica aqui
+  // a decisão e a deteção deixa de lhe mexer.
+  repeticaoManual?: boolean;
   jaProduzido: boolean;
   arteCliente: boolean;
   suporteConfigurado: boolean;
