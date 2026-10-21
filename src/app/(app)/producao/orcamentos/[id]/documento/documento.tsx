@@ -61,6 +61,13 @@ export default function Documento() {
   };
   const precoTabela = (l: (typeof r.linhas)[number]) =>
     totalTabela(l) > totalLinha(l) && l.qtdFaturada > 0 ? totalTabela(l) / l.qtdFaturada : undefined;
+  // O que a mesma linha custaria ao balcão. Só quando não há já um desconto
+  // explícito a ocupar o preço riscado — dois riscados pela mesma linha seriam
+  // dois descontos a dizer o mesmo.
+  const precoBalcao = (l: (typeof r.linhas)[number]) =>
+    racioBalcao && o.mostrarDescontoCliente !== false && precoTabela(l) == null && l.qtdFaturada > 0
+      ? precoUnit(l) * racioBalcao
+      : undefined;
   // Linhas que entram na tabela: as normais e, depois de ganho, a opção escolhida
   const linhasTabela = r.linhas.filter((l) => l.incluida);
   const gruposAbertos = r.grupos.filter((g) => !g.escolhida);
@@ -159,7 +166,7 @@ export default function Documento() {
             </thead>
             <tbody>
               {linhasTabela.map((l) => (
-                <LinhaDoc key={l.linha.id} l={l} iva={p.iva} precoUnit={precoUnit(l)} precoTabela={precoTabela(l)} total={totalLinha(l)} imagem={imagemDe(l)} alternativas={alternativasDe(l)} reparticao={reparticaoDe(l)} pvp={o.tipoCliente === "parceiro" ? l.linha.pvpRecomendado : undefined} />
+                <LinhaDoc key={l.linha.id} l={l} iva={p.iva} precoUnit={precoUnit(l)} precoTabela={precoTabela(l)} precoBalcao={precoBalcao(l)} total={totalLinha(l)} imagem={imagemDe(l)} alternativas={alternativasDe(l)} reparticao={reparticaoDe(l)} pvp={o.tipoCliente === "parceiro" ? l.linha.pvpRecomendado : undefined} />
               ))}
               {r.vendaCriacao > 0 && (
                 <tr className="border-b border-linha">
@@ -202,6 +209,7 @@ export default function Documento() {
                         rotulo={`Opção ${String.fromCharCode(65 + i)}`}
                         precoUnit={precoUnit(l)}
                         precoTabela={precoTabela(l)}
+                        precoBalcao={precoBalcao(l)}
                         total={totalLinha(l)}
                         imagem={imagemDe(l)}
                         alternativas={alternativasDe(l)}
@@ -330,6 +338,7 @@ function LinhaDoc({
   rotulo,
   precoUnit,
   precoTabela,
+  precoBalcao,
   total,
   iva,
   imagem,
@@ -341,6 +350,8 @@ function LinhaDoc({
   rotulo?: string;
   precoUnit: number;
   precoTabela?: number;
+  /** O que custaria ao balcão, quando este cliente tem condição melhor */
+  precoBalcao?: number;
   total: number;
   iva: number;
   imagem?: string;
@@ -367,6 +378,9 @@ function LinhaDoc({
         {precoTabela != null && (
           <div className="text-xs font-medium text-verde">Desconto de {percent(1 - precoUnit / precoTabela)} sobre o preço de tabela</div>
         )}
+        {precoBalcao != null && (
+          <div className="text-xs font-medium text-verde">Desconto de {percent(1 - precoUnit / precoBalcao)} sobre o preço de balcão</div>
+        )}
         {l.aplicacoes.map((a) => (
           <div key={a.aplicacao.id} className="text-xs text-cinza">
             {descreverAplicacao(a.aplicacao)}
@@ -388,6 +402,7 @@ function LinhaDoc({
       <td className="py-3 px-2 text-right tabular-nums">{numero(l.qtdFaturada)}</td>
       <td className="py-3 px-2 text-right tabular-nums">
         {precoTabela != null && <div className="text-xs text-cinza line-through">{euros(precoTabela)}</div>}
+        {precoBalcao != null && <div className="text-xs text-cinza line-through">{euros(precoBalcao)}</div>}
         {euros(precoUnit)}
       </td>
       <td className="py-3 px-2 text-right tabular-nums">{euros(total)}</td>
