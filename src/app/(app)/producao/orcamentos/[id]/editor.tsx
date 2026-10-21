@@ -10,6 +10,7 @@ import { ImagemArtigo } from "@/app/(app)/producao/_components/imagem-artigo";
 import { Avisos, CampoNumero, EtiquetaEstimativa, Interruptor, Rotulado } from "@/app/(app)/producao/_components/campos";
 import { calcularOrcamento, custosPorRubrica, precosPorQuantidade, pvpSugerido, type ResultadoLinha } from "@/lib/producao/engine";
 import { procurarRepeticao } from "@/lib/producao/historico";
+import { duplicarLinha } from "@/lib/producao/linhas";
 import { ESTADOS, MOTIVOS_PERDA } from "@/lib/producao/estados";
 import { dataPt, euros, horasMin, numero, percent } from "@/lib/producao/format";
 import { etapaDe, ETAPAS } from "@/lib/producao/agenda";
@@ -96,6 +97,9 @@ function Editor({ o }: { o: Orcamento }) {
     };
     mudarLinhas((ls) => [...ls, l]);
   };
+
+  const duplicar = (id: string, comoOpcao: boolean) =>
+    mudarLinhas((ls) => duplicarLinha(ls, id, comoOpcao, novoId));
 
   return (
     <div>
@@ -196,6 +200,7 @@ function Editor({ o }: { o: Orcamento }) {
               r={r.linhas[i]}
               artigos={dados.artigos}
               aoMudar={(fn) => mudarLinha(l.id, fn)}
+              aoDuplicar={(comoOpcao) => duplicar(l.id, comoOpcao)}
               aoRemover={() => mudarLinhas((ls) => ls.filter((x) => x.id !== l.id))}
             />
           ))}
@@ -469,6 +474,7 @@ function EditorLinha({
   r,
   artigos,
   aoMudar,
+  aoDuplicar,
   aoRemover,
 }: {
   indice: number;
@@ -476,6 +482,7 @@ function EditorLinha({
   r?: ResultadoLinha & { incluida: boolean };
   artigos: Artigo[];
   aoMudar: (fn: (l: LinhaOrcamento) => LinhaOrcamento) => void;
+  aoDuplicar: (comoOpcao: boolean) => void;
   aoRemover: () => void;
 }) {
   const set = (p: Partial<LinhaOrcamento>) => aoMudar((cur) => ({ ...cur, ...p }));
@@ -540,9 +547,29 @@ function EditorLinha({
           )}
           {l.grupoOpcao && r && !r.incluida && <span className="etiqueta bg-beige-claro text-mostarda">não conta no total</span>}
         </div>
-        <button className="botao-perigo" onClick={aoRemover}>
-          Remover artigo
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* O caso que isto resolve: o mesmo boné com outra técnica. Copiar
+              como opção poupa ainda o passo de os juntar no mesmo grupo. */}
+          <button
+            className="botao-secundario"
+            onClick={() => aoDuplicar(false)}
+            title="Copia o artigo com tudo — peça, custo, fornecedor, portes e aplicações"
+          >
+            Duplicar
+          </button>
+          {!l.grupoOpcao && (
+            <button
+              className="botao-secundario"
+              onClick={() => aoDuplicar(true)}
+              title="Copia e põe os dois como alternativas: o cliente escolhe uma"
+            >
+              Duplicar como opção
+            </button>
+          )}
+          <button className="botao-perigo" onClick={aoRemover}>
+            Remover artigo
+          </button>
+        </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
