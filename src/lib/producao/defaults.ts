@@ -5,7 +5,7 @@ import type { Artigo, Parametros } from "./types";
 // Pessoas, horas e FSE vêm do SOU_Calculadora_v27.xlsx (folha Custo hora).
 
 export const PARAMETROS_INICIAIS: Parametros = {
-  versao: 3,
+  versao: 4,
   empresa: {
     nome: "SOU Creative",
     nif: "",
@@ -123,8 +123,11 @@ export const PARAMETROS_INICIAIS: Parametros = {
   ],
   consumiveis: [
     // GTX e sublimação: folhas de custos da SOU (out 2026)
-    { id: "gtx_cmyk", nome: "Tinta GTX CMYK", unidade: "ml", embalagemPreco: 225.4, embalagemQtd: 700, preco: 0.322, maquinaId: "gtx", estimativa: false, nota: "225,40 € por 0,7 L" },
-    { id: "gtx_branco", nome: "Tinta GTX branco", unidade: "ml", embalagemPreco: 371.5, embalagemQtd: 1400, preco: 0.2654, maquinaId: "gtx", estimativa: false, nota: "371,50 € por 1,4 L" },
+    { id: "gtx_ciano", nome: "Tinta GTX ciano", unidade: "ml", embalagemPreco: 230, embalagemQtd: 700, preco: 0.3286, maquinaId: "gtx", estimativa: false, nota: "230 € por frasco de 700 cc" },
+    { id: "gtx_magenta", nome: "Tinta GTX magenta", unidade: "ml", embalagemPreco: 230, embalagemQtd: 700, preco: 0.3286, maquinaId: "gtx", estimativa: false, nota: "230 € por frasco de 700 cc" },
+    { id: "gtx_amarelo", nome: "Tinta GTX amarelo", unidade: "ml", embalagemPreco: 230, embalagemQtd: 700, preco: 0.3286, maquinaId: "gtx", estimativa: false, nota: "230 € por frasco de 700 cc" },
+    { id: "gtx_preto", nome: "Tinta GTX preto", unidade: "ml", embalagemPreco: 230, embalagemQtd: 700, preco: 0.3286, maquinaId: "gtx", estimativa: false, nota: "230 € por frasco de 700 cc" },
+    { id: "gtx_branco", nome: "Tinta GTX branco", unidade: "ml", embalagemPreco: 379, embalagemQtd: 1400, preco: 0.2707, maquinaId: "gtx", estimativa: false, nota: "379 € pelos dois cartuchos de 700 cc" },
     { id: "dtg_pretrat", nome: "Líquido de pré-tratamento", unidade: "ml", embalagemPreco: 16, embalagemQtd: 1000, preco: 0.016, maquinaId: "gtx", estimativa: false, nota: "16 € por litro" },
     { id: "gtx_manutencao", nome: "Kit de manutenção GTX", unidade: "un", embalagemPreco: 330, embalagemQtd: 25000, preco: 0.0132, maquinaId: "gtx", estimativa: false, nota: "330 € a cada 25 000 impressões" },
     { id: "dtf_filme", nome: "Filme DTF", unidade: "cm²", preco: 0.0004, maquinaId: "gtx", estimativa: true },
@@ -347,6 +350,17 @@ export function completarParametros(guardado: Partial<Parametros>): Parametros {
       escaloes: base.escaloes,
       limiteSubcontratar: base.limiteSubcontratar,
       tecnicas: guardado.tecnicas?.map((t) => ({ ...t, minimoAteQtd: 1 })),
+    };
+  }
+  // Versão 4: a tinta de cor da GTX deixa de ser uma entrada só e passa a ser
+  // ciano, magenta, amarelo e preto, para o stock se contar por frasco. A
+  // entrada antiga sai: deixada lá ficava na lista sem consumo nenhum, a
+  // parecer um consumível que ninguém usa.
+  if ((guardado.versao ?? 1) < 4) {
+    guardado = {
+      ...guardado,
+      versao: 4,
+      consumiveis: guardado.consumiveis?.filter((c) => c.id !== "gtx_cmyk"),
     };
   }
   const juntarPorId = <T extends { id: string }>(g: T[] | undefined, b: T[]) =>

@@ -235,6 +235,11 @@ export interface Aplicacao {
   alturaCm?: number;
   coberturaPct?: number;
   pecaEscura?: boolean; // DTG
+  // Mililitros medidos no software da Brother para este desenho. Quando
+  // preenchidos, mandam sobre a estimativa por área e cobertura — que é um
+  // palpite, e este é o número real.
+  tintaCorMl?: number;
+  tintaBrancoMl?: number;
   suporte?: "texteis" | "caneca" | "rigido"; // sublimação
   complexidadeCorte?: "simples" | "medio" | "complexo"; // Cricut
   // Bordado

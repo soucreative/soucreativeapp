@@ -196,10 +196,11 @@ export function calcularPeca(params: Parametros, a: Aplicacao, emParalelo = 1): 
   switch (a.tecnica) {
     case "dtg": {
       const escura = !!a.pecaEscura;
-      consumos.gtx_cmyk = area * cob * k.cmykMlCm2;
+      // Os ml medidos no software da Brother mandam sobre a estimativa por área
+      repartirCor(consumos, a.tintaCorMl ?? area * cob * k.cmykMlCm2);
       consumos.gtx_manutencao = 1; // kit de manutenção, por impressão
       if (escura) {
-        consumos.gtx_branco = area * cob * k.brancoMlCm2;
+        consumos.gtx_branco = a.tintaBrancoMl ?? area * cob * k.brancoMlCm2;
         consumos.dtg_pretrat = area * k.pretratMlCm2;
         operadorMin += k.pretratOperadorMin;
       }
@@ -208,8 +209,8 @@ export function calcularPeca(params: Parametros, a: Aplicacao, emParalelo = 1): 
       break;
     }
     case "dtf": {
-      consumos.gtx_cmyk = area * cob * k.cmykMlCm2;
-      consumos.gtx_branco = area * cob * k.brancoMlCm2;
+      repartirCor(consumos, a.tintaCorMl ?? area * cob * k.cmykMlCm2);
+      consumos.gtx_branco = a.tintaBrancoMl ?? area * cob * k.brancoMlCm2;
       consumos.dtf_filme = area * k.filmeFator;
       consumos.dtf_po = area * cob * k.poGCm2;
       consumos.gtx_manutencao = 1;
@@ -281,6 +282,20 @@ export function precoConsumivel(c: Pick<Consumivel, "preco" | "embalagemPreco" |
   return c.preco;
 }
 
+/** As quatro tintas de cor da GTX. O branco é à parte: só entra em peça escura. */
+export const TINTAS_COR = ["gtx_ciano", "gtx_magenta", "gtx_amarelo", "gtx_preto"] as const;
+
+/**
+ * Repartir a tinta de cor pelas quatro cores.
+ *
+ * A divisão é igual porque não sabemos o consumo real de cada cor — isso vem
+ * do software da Brother, desenho a desenho, e entra pelo campo de ml medidos.
+ * Enquanto for estimativa, a repartição não muda o custo (as quatro custam o
+ * mesmo por ml); muda o stock, que é para isso que serve.
+ */
+function repartirCor(consumos: Record<string, number>, ml: number) {
+  for (const id of TINTAS_COR) consumos[id] = (consumos[id] ?? 0) + ml / TINTAS_COR.length;
+}
 function custoConsumos(params: Parametros, consumos: Record<string, number>): number {
   let s = 0;
   for (const [id, q] of Object.entries(consumos)) {

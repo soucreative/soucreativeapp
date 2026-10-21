@@ -139,6 +139,26 @@ export function AplicacaoEditor({
             <Interruptor ligado={!!a.pecaEscura} aoMudar={(v) => set({ pecaEscura: v })} rotulo="Peça escura (branco + pré-tratamento)" />
           </div>
         )}
+        {/* A cobertura em percentagem é um palpite; o software da Brother dá os
+            mililitros deste desenho. Em branco mantém-se a estimativa por área. */}
+        {(a.tecnica === "dtg" || a.tecnica === "dtf") && (
+          <>
+            <Rotulado
+              rotulo="Tinta de cor medida"
+              dica="Mililitros de ciano, magenta, amarelo e preto que o software da Brother dá para este desenho. Preenchido, substitui a estimativa por área e cobertura."
+            >
+              <CampoNumero valor={a.tintaCorMl} aoMudar={(n) => set({ tintaCorMl: n })} sufixo="ml" min={0} vazio />
+            </Rotulado>
+            {(a.tecnica === "dtf" || a.pecaEscura) && (
+              <Rotulado
+                rotulo="Tinta branca medida"
+                dica="Mililitros de branco para este desenho, também do software da Brother."
+              >
+                <CampoNumero valor={a.tintaBrancoMl} aoMudar={(n) => set({ tintaBrancoMl: n })} sufixo="ml" min={0} vazio />
+              </Rotulado>
+            )}
+          </>
+        )}
         {a.tecnica === "sublimacao" && (
           <Rotulado rotulo="Suporte">
             <select className="campo" value={a.suporte ?? "texteis"} onChange={(e) => set({ suporte: e.target.value as Aplicacao["suporte"] })}>

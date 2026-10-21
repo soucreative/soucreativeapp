@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { CampoNumero, EtiquetaEstimativa, Titulo } from "@/app/(app)/producao/_components/campos";
 import { calcularOrcamento, precoConsumivel } from "@/lib/producao/engine";
 import { numero } from "@/lib/producao/format";
-import { atualizarParametros, atualizarStock, useDados } from "@/app/(app)/producao/_lib/store";
+import { atualizarParametros, atualizarStock, novoId, useDados } from "@/app/(app)/producao/_lib/store";
 import { EstadoGravacao } from "@/app/(app)/producao/_components/estado-gravacao";
-import type { Parametros } from "@/lib/producao/types";
+import type { Consumivel, Parametros } from "@/lib/producao/types";
 
 export default function Consumiveis() {
   const dados = useDados();
@@ -23,7 +23,9 @@ export default function Consumiveis() {
     return { reservado: acc, porProduzir: lista };
   }, [dados.orcamentos, p]);
 
-  const maquinas = p.maquinas.filter((m) => p.consumiveis.some((c) => c.maquinaId === m.id));
+  // Todas as máquinas têm secção, mesmo sem consumíveis ainda: é lá que se
+  // carrega para acrescentar o primeiro.
+  const maquinas = p.maquinas;
 
   // Os preços vivem aqui, que é onde se olha quando chega uma factura. Os
   // parâmetros leem-nos; não se escrevem nos dois sítios.
@@ -155,13 +157,85 @@ export default function Consumiveis() {
                   })}
               </tbody>
             </table>
+            <NovoConsumivel maquinaId={m.id} />
           </section>
         ))}
       </div>
       <p className="mt-4 text-xs text-cinza">
-        Os preços e as quantidades gastas por cm² ou por ponto alteram-se nos Parâmetros. O consumo é estimado: convém uma contagem
+        Quanto se gasta por cm² ou por ponto altera-se nos Parâmetros, por técnica. O consumo é estimado: convém uma contagem
         física de vez em quando para acertar o stock.
       </p>
     </>
+  );
+}
+
+const UNIDADES: Consumivel["unidade"][] = ["ml", "cm²", "g", "m", "un"];
+
+/**
+ * Acrescentar um consumível a uma máquina.
+ *
+ * Fica logo com stock por contar e sem embalagem: o que interessa é tê-lo na
+ * lista para se poder contar, e os números entram a seguir na própria linha.
+ *
+ * Um consumível acrescentado à mão não entra sozinho no custo de nenhuma
+ * técnica — para isso é preciso dizer, nos Parâmetros, quanto dele se gasta.
+ * Daí o aviso: sem isso fica a contar stock e mais nada.
+ */
+function NovoConsumivel({ maquinaId }: { maquinaId: string }) {
+  const [aberto, setAberto] = useState(false);
+  const [nome, setNome] = useState("");
+  const [unidade, setUnidade] = useState<Consumivel["unidade"]>("un");
+
+  if (!aberto) {
+    return (
+      <button type="button" className="mt-3 text-sm text-cinza underline hover:text-verde" onClick={() => setAberto(true)}>
+        + Novo consumível
+      </button>
+    );
+  }
+
+  const criar = () => {
+    const n = nome.trim();
+    if (!n) return;
+    atualizarParametros((d) => {
+      d.consumiveis.push({ id: novoId(), nome: n, unidade, preco: 0, maquinaId, estimativa: true });
+    });
+    setNome("");
+    setAberto(false);
+  };
+
+  return (
+    <div className="mt-3 flex flex-wrap items-end gap-2 rounded-lg border border-linha bg-papel/60 p-3">
+      <label className="flex-1 min-w-48">
+        <span className="rotulo">Nome</span>
+        <input
+          className="campo"
+          autoFocus
+          value={nome}
+          placeholder="ex.: Tinta de limpeza"
+          onChange={(e) => setNome(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && criar()}
+        />
+      </label>
+      <label>
+        <span className="rotulo">Unidade</span>
+        <select className="campo" value={unidade} onChange={(e) => setUnidade(e.target.value as Consumivel["unidade"])}>
+          {UNIDADES.map((u) => (
+            <option key={u} value={u}>
+              {u}
+            </option>
+          ))}
+        </select>
+      </label>
+      <button type="button" className="botao-principal" onClick={criar} disabled={!nome.trim()}>
+        Criar
+      </button>
+      <button type="button" className="px-2 py-1.5 text-sm text-cinza hover:text-tinta" onClick={() => setAberto(false)}>
+        Cancelar
+      </button>
+      <p className="w-full text-xs text-cinza">
+        Entra na lista para se contar o stock. Para entrar no custo de uma técnica, é preciso dizer nos Parâmetros quanto dela se gasta.
+      </p>
+    </div>
   );
 }
