@@ -302,6 +302,10 @@ export interface Orcamento {
   notas?: string;
   // No documento: mostrar o quadro do total (sem opções). Vazio = mostrar
   mostrarTotal?: boolean;
+  // No documento: mostrar quanto este cliente poupa face ao preço de balcão.
+  // Vazio = mostrar, em empresas e parceiros. Há propostas onde não convém
+  // revelar o preço de retalho, e por isso desliga-se por orçamento.
+  mostrarDescontoCliente?: boolean;
   linhas: LinhaOrcamento[];
   // Fotografia do cálculo quando sai de rascunho: um orçamento enviado
   // não pode mudar de preço porque alguém mexeu nos parâmetros.

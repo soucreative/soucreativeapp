@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMemo } from "react";
-import { calcularOrcamento, NOME_TECNICA, precosPorQuantidade, type ResultadoLinha } from "@/lib/producao/engine";
+import { calcularOrcamento, NOME_TECNICA, precosPorQuantidade, tipoClienteDe, type ResultadoLinha } from "@/lib/producao/engine";
 import { dataPt, euros, numero, percent } from "@/lib/producao/format";
 import { atualizarOrcamento, useCarregado, useDados } from "@/app/(app)/producao/_lib/store";
 import { useModelos } from "@/app/(app)/producao/_lib/modelos";
@@ -25,6 +25,20 @@ export default function Documento() {
   const o = dados.orcamentos.find((x) => x.id === id);
   const p = dados.parametros;
   const r = useMemo(() => (o ? calcularOrcamento(p, o) : null), [p, o]);
+
+  // O mesmo orçamento feito a um particular. Uma empresa ou um parceiro já leva
+  // desconto nas margens e no fator hora, mas isso não aparece em lado nenhum:
+  // o cliente vê um preço e não sabe que é melhor do que o de balcão.
+  //
+  // Compara-se pela proporção e não pelo valor: num orçamento já enviado o
+  // total está congelado, e recalcular a referência com os parâmetros de hoje
+  // daria uma diferença que não corresponde ao que foi proposto.
+  const racioBalcao = useMemo(() => {
+    if (!o || !r || o.tipoCliente === "particular" || r.total <= 0) return null;
+    const balcao = calcularOrcamento(p, { ...o, tipoCliente: "particular" });
+    const racio = balcao.total / r.total;
+    return racio > 1.0005 ? racio : null;
+  }, [p, o, r]);
   const { modelos } = useModelos();
 
   if (!carregado) return null;
@@ -83,6 +97,19 @@ export default function Documento() {
           </label>
         ) : (
           <span className="rounded-md bg-beige-claro px-3 py-1.5 text-xs text-mostarda">Com opções, cada opção mostra o seu total: não há total do orçamento.</span>
+        )}
+        {racioBalcao && (
+          <label className="flex items-center gap-2 rounded-md bg-white px-3 py-1.5 text-sm ring-1 ring-linha">
+            <input
+              type="checkbox"
+              className="h-4 w-4 accent-[var(--color-verde)]"
+              checked={o.mostrarDescontoCliente !== false}
+              onChange={(ev) => atualizarOrcamento(o.id, (x) => ({ ...x, mostrarDescontoCliente: ev.target.checked }))}
+            />
+            {/* A percentagem é sobre o preço de balcão, que é o que o cliente
+                compara. Sobre o que ele paga daria um número maior e errado. */}
+            Mostrar a poupança face ao balcão ({percent(1 - 1 / racioBalcao)})
+          </label>
         )}
         <span className="text-xs text-cinza">
           No diálogo de impressão escolha &quot;Guardar como PDF&quot;. Para uma proposta especial, o PDF importa-se no Canva.
@@ -216,6 +243,25 @@ export default function Documento() {
                   <div className="flex justify-between">
                     <span className="text-cinza">Desconto {percent(o.descontoPotencialPct)}</span>
                     <span className="tabular-nums">− {euros(r.desconto * fator)}</span>
+                  </div>
+                </>
+              )}
+              {/* O que já vai descontado por ser empresa ou parceiro. Sem isto
+                  o cliente vê um preço e não sabe que é melhor do que o de
+                  balcão — e a condição que tem connosco passa despercebida. */}
+              {racioBalcao && o.mostrarDescontoCliente !== false && (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-cinza">Preço de balcão</span>
+                    <span className="tabular-nums">{euros(r.total * fator * racioBalcao)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-cinza">
+                      Condição {tipoClienteDe(p, o.tipoCliente).nome.toLowerCase()}
+                    </span>
+                    <span className="tabular-nums">
+                      − {euros(r.total * fator * (racioBalcao - 1))}
+                    </span>
                   </div>
                 </>
               )}
