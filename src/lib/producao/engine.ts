@@ -241,7 +241,7 @@ export function calcularPeca(params: Parametros, a: Aplicacao, emParalelo = 1): 
       operadorMin += (maquinaMin * k.atencaoOperadorPct) / Math.max(1, emParalelo);
       consumos.bord_linha = (pontos / 1000) * k.linhaMPor1000;
       const areaEntretela = area > 0 ? area : pontos / k.pontosPorCm2;
-      consumos.bord_entretela = areaEntretela * k.entretelaFator;
+      repartirMistura(consumos, params, "entretela", areaEntretela * k.entretelaFator, "bord_entretela");
       break;
     }
     case "cricut": {
@@ -306,6 +306,33 @@ export const TINTAS_COR = ["gtx_ciano", "gtx_magenta", "gtx_amarelo", "gtx_preto
  */
 function repartirCor(consumos: Record<string, number>, ml: number) {
   for (const id of TINTAS_COR) consumos[id] = (consumos[id] ?? 0) + ml / TINTAS_COR.length;
+}
+/**
+ * Gastar um consumível que na verdade é uma mistura de vários.
+ *
+ * As entretelas do bordado fazem todas o mesmo papel e usam-se em proporções
+ * diferentes. Em vez de escolher uma, reparte-se pelo peso de cada: o custo
+ * fica a média ponderada e o stock gasta-se na proporção certa.
+ *
+ * Sem pesos definidos cai no consumível de sempre. É deliberado: uma mistura
+ * por preencher não deve mudar o preço de nada.
+ */
+function repartirMistura(
+  consumos: Record<string, number>,
+  params: Parametros,
+  grupo: string,
+  quantidade: number,
+  semMistura: string,
+) {
+  const membros = params.consumiveis.filter((c) => c.grupoMistura === grupo && (c.pesoMistura ?? 0) > 0);
+  const total = membros.reduce((s, c) => s + (c.pesoMistura ?? 0), 0);
+  if (total <= 0) {
+    consumos[semMistura] = (consumos[semMistura] ?? 0) + quantidade;
+    return;
+  }
+  for (const c of membros) {
+    consumos[c.id] = (consumos[c.id] ?? 0) + (quantidade * (c.pesoMistura ?? 0)) / total;
+  }
 }
 function custoConsumos(params: Parametros, consumos: Record<string, number>): number {
   let s = 0;

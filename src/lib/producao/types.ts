@@ -99,6 +99,13 @@ export interface Consumivel {
   embalagemPreco?: number;
   embalagemQtd?: number; // na mesma unidade do consumível
   preco: number; // € por unidade; ignorado quando há embalagem
+  // Consumíveis que fazem o mesmo papel e se usam em proporções diferentes —
+  // as entretelas do bordado, por exemplo. O custo passa a ser a média
+  // ponderada por estes pesos, e o stock gasta-se na mesma proporção.
+  // Pesos todos a zero = a mistura não está definida e vale o consumível
+  // estimado de sempre, para não mudar preços sem ninguém decidir.
+  grupoMistura?: string;
+  pesoMistura?: number;
   maquinaId: string;
   estimativa: boolean;
   stock?: number;

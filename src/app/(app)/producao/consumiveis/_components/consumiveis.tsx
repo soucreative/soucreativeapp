@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { CampoNumero, EtiquetaEstimativa, Titulo } from "@/app/(app)/producao/_components/campos";
 import { calcularOrcamento, precoConsumivel, CONSUMIVEIS_DO_MOTOR } from "@/lib/producao/engine";
-import { numero } from "@/lib/producao/format";
+import { eurosFino, numero } from "@/lib/producao/format";
 import { atualizarParametros, atualizarStock, novoId, useDados } from "@/app/(app)/producao/_lib/store";
 import { EstadoGravacao } from "@/app/(app)/producao/_components/estado-gravacao";
 import type { Consumivel, Parametros } from "@/lib/producao/types";
@@ -69,6 +69,7 @@ export default function Consumiveis() {
                   <th className="w-28 num">Embalagem</th>
                   <th className="w-28 num">Traz</th>
                   <th className="w-32 num">Preço/un</th>
+                  <th className="w-24 num">Mistura</th>
                   <th className="w-36 num">Stock atual</th>
                   <th className="w-36 num">Stock mínimo</th>
                   <th className="num">Reservado</th>
@@ -130,6 +131,21 @@ export default function Consumiveis() {
                             }
                           />
                         </td>
+                        {/* Só os que fazem parte de uma mistura: para os outros
+                            um peso não quer dizer nada */}
+                        <td>
+                          {c.grupoMistura ? (
+                            <CampoNumero
+                              valor={c.pesoMistura}
+                              percentagem
+                              vazio
+                              min={0}
+                              aoMudar={(n) => mexer(c.id, (x) => void (x.pesoMistura = n))}
+                            />
+                          ) : (
+                            <span className="block text-right text-xs text-cinza/50">—</span>
+                          )}
+                        </td>
                         <td>
                           <CampoNumero
                             valor={c.stock}
@@ -161,6 +177,7 @@ export default function Consumiveis() {
                   })}
               </tbody>
             </table>
+            <Misturas consumiveis={p.consumiveis.filter((c) => c.maquinaId === m.id)} />
             <NovoConsumivel maquinaId={m.id} />
           </section>
         ))}
@@ -287,5 +304,42 @@ function ApagarConsumivel({ id, nome, temStock }: { id: string; nome: string; te
         </span>
       )}
     </span>
+  );
+}
+
+/**
+ * Resumo de cada mistura: a média ponderada que vai para o custo.
+ *
+ * Mostra-se porque é um número que ninguém escreve e que manda no preço de
+ * todos os orçamentos da técnica. Enquanto os pesos estiverem por preencher,
+ * diz-se isso em vez de fingir uma média.
+ */
+function Misturas({ consumiveis }: { consumiveis: Consumivel[] }) {
+  const grupos = [...new Set(consumiveis.map((c) => c.grupoMistura).filter(Boolean))] as string[];
+  if (!grupos.length) return null;
+
+  return (
+    <div className="mt-3 space-y-1">
+      {grupos.map((g) => {
+        const membros = consumiveis.filter((c) => c.grupoMistura === g);
+        const total = membros.reduce((s, c) => s + (c.pesoMistura ?? 0), 0);
+        if (total <= 0) {
+          return (
+            <p key={g} className="text-xs text-mostarda">
+              Mistura <b>{g}</b>: pesos por preencher. Até lá o custo usa a estimativa de sempre.
+            </p>
+          );
+        }
+        const media = membros.reduce((s, c) => s + precoConsumivel(c) * ((c.pesoMistura ?? 0) / total), 0);
+        return (
+          <p key={g} className="text-xs text-cinza">
+            Mistura <b>{g}</b>: média ponderada de <b>{eurosFino(media)}</b>/{membros[0].unidade}
+            {Math.abs(total - 1) > 0.005 && (
+              <span className="text-mostarda"> · os pesos somam {Math.round(total * 100)} %, não 100</span>
+            )}
+          </p>
+        );
+      })}
+    </div>
   );
 }
