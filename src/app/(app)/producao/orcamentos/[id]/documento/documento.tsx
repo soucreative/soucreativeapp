@@ -33,12 +33,20 @@ export default function Documento() {
   // Compara-se pela proporção e não pelo valor: num orçamento já enviado o
   // total está congelado, e recalcular a referência com os parâmetros de hoje
   // daria uma diferença que não corresponde ao que foi proposto.
-  const racioBalcao = useMemo(() => {
-    if (!o || !r || o.tipoCliente === "particular" || r.total <= 0) return null;
-    const balcao = calcularOrcamento(p, { ...o, tipoCliente: "particular" });
-    const racio = balcao.total / r.total;
-    return racio > 1.0005 ? racio : null;
+  //
+  // O desconto é por linha e não um só para o orçamento inteiro: numa peça
+  // cara com pouca personalização ronda os 17%, numa peça barata com muito
+  // bordado passa dos 26%. Mostrar a média em todas as linhas seria inventar
+  // um número que nenhuma delas tem — e as linhas que estão dentro de opções
+  // nem sequer entram no total, por isso de um rácio global não viria nada.
+  const balcao = useMemo(() => {
+    if (!o || !r || o.tipoCliente === "particular") return null;
+    const b = calcularOrcamento(p, { ...o, tipoCliente: "particular" });
+    const porLinha = new Map(b.linhas.map((l) => [l.linha.id, l.total]));
+    const racio = r.total > 0 ? b.total / r.total : null;
+    return { porLinha, racio: racio && racio > 1.0005 ? racio : null };
   }, [p, o, r]);
+  const racioBalcao = balcao?.racio ?? null;
   const { modelos } = useModelos();
 
   if (!carregado) return null;
@@ -64,10 +72,16 @@ export default function Documento() {
   // O que a mesma linha custaria ao balcão. Só quando não há já um desconto
   // explícito a ocupar o preço riscado — dois riscados pela mesma linha seriam
   // dois descontos a dizer o mesmo.
-  const precoBalcao = (l: (typeof r.linhas)[number]) =>
-    racioBalcao && o.mostrarDescontoCliente !== false && precoTabela(l) == null && l.qtdFaturada > 0
-      ? precoUnit(l) * racioBalcao
-      : undefined;
+  const precoBalcao = (l: (typeof r.linhas)[number]) => {
+    if (!balcao || o.mostrarDescontoCliente === false || precoTabela(l) != null) return undefined;
+    if (l.qtdFaturada <= 0 || l.total <= 0) return undefined;
+    const totalBalcao = balcao.porLinha.get(l.linha.id);
+    if (totalBalcao == null) return undefined;
+    // A escala do congelamento aplica-se à referência tal como ao praticado,
+    // para a diferença ser a que foi proposta e não a de hoje
+    const unitario = (totalBalcao / l.total) * precoUnit(l);
+    return unitario > precoUnit(l) * 1.0005 ? unitario : undefined;
+  };
   // Linhas que entram na tabela: as normais e, depois de ganho, a opção escolhida
   const linhasTabela = r.linhas.filter((l) => l.incluida);
   const gruposAbertos = r.grupos.filter((g) => !g.escolhida);
@@ -105,7 +119,10 @@ export default function Documento() {
         ) : (
           <span className="rounded-md bg-beige-claro px-3 py-1.5 text-xs text-mostarda">Com opções, cada opção mostra o seu total: não há total do orçamento.</span>
         )}
-        {racioBalcao && (
+        {/* A caixa aparece sempre que há condição a mostrar, mesmo quando o
+            orçamento é todo de opções e não tem total: é nas linhas que a
+            poupança aparece, e tem de se poder desligar também aí. */}
+        {balcao && (
           <label className="flex items-center gap-2 rounded-md bg-white px-3 py-1.5 text-sm ring-1 ring-linha">
             <input
               type="checkbox"
@@ -115,7 +132,8 @@ export default function Documento() {
             />
             {/* A percentagem é sobre o preço de balcão, que é o que o cliente
                 compara. Sobre o que ele paga daria um número maior e errado. */}
-            Mostrar a poupança face ao balcão ({percent(1 - 1 / racioBalcao)})
+            Mostrar a poupança face ao balcão
+            {racioBalcao ? ` (${percent(1 - 1 / racioBalcao)} no total)` : ""}
           </label>
         )}
         <span className="text-xs text-cinza">
