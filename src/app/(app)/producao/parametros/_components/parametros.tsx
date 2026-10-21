@@ -385,8 +385,8 @@ export default function EditorParametros() {
         <Seccao titulo="Consumíveis: preço da embalagem">
           <p className="mb-3 text-xs text-cinza">
             Escreve-se o que vem na factura do fornecedor — o preço do frasco e quanto traz — e o
-            preço por unidade sai da divisão. Deixando a embalagem em branco, escreve-se o preço
-            por unidade directamente, para o que se compra a granel.
+            preço por unidade sai da divisão. Os três campos editam-se: mexer num acerta o outro,
+            para nunca ficarem a discordar. Sem embalagem, vale o preço por unidade sozinho.
           </p>
           <table className="tabela">
             <thead>
@@ -403,7 +403,7 @@ export default function EditorParametros() {
                 </th>
                 <th className="w-40 num">
                   Preço por unidade
-                  <Ajuda texto="Calculado da embalagem. Só se escreve quando a embalagem fica em branco." />
+                  <Ajuda texto="Sai da divisão da embalagem, mas também se pode escrever aqui: nesse caso é o preço da embalagem que se acerta, para os dois nunca discordarem." />
                 </th>
                 <th>Estimativa</th>
               </tr>
@@ -431,29 +431,27 @@ export default function EditorParametros() {
                       aoMudar={(n) => mudar((d) => void (d.consumiveis[i].embalagemQtd = n))}
                     />
                   </td>
-                  {/* Com embalagem, o preço por unidade é uma conta e não um
-                      campo: deixá-lo editável convidava a que os dois deixassem
-                      de bater certo e ninguém soubesse qual valia. */}
+                  {/* Os dois lados editam-se, e mexer num acerta o outro. Com
+                      embalagem, escrever aqui 0,35 €/ml num frasco de 700 ml
+                      passa o frasco a 245 € — em vez de bloquear o campo ou de
+                      deixar os dois números a discordar sem se saber qual vale. */}
                   <td>
-                    {temEmbalagem(c) ? (
-                      <div className="py-1.5 text-right">
-                        <div className="text-sm tabular-nums">
-                          {eurosFino(precoConsumivel(c))}
-                          <span className="ml-1 text-xs text-cinza">/{c.unidade}</span>
-                        </div>
-                        <div className="text-[11px] text-cinza">calculado</div>
-                      </div>
-                    ) : (
-                      <>
-                        <CampoNumero
-                          valor={c.preco}
-                          sufixo={`€/${c.unidade}`}
-                          estimativa={c.estimativa}
-                          aoMudar={(n) => mudar((d) => void (d.consumiveis[i].preco = n ?? 0))}
-                        />
-                        <div className="mt-0.5 text-right text-[11px] text-cinza">{eurosFino(c.preco)}</div>
-                      </>
-                    )}
+                    <CampoNumero
+                      valor={precoConsumivel(c)}
+                      sufixo={`€/${c.unidade}`}
+                      estimativa={c.estimativa}
+                      aoMudar={(n) =>
+                        mudar((d) => {
+                          const alvo = d.consumiveis[i];
+                          const novo = n ?? 0;
+                          if (temEmbalagem(alvo)) alvo.embalagemPreco = novo * (alvo.embalagemQtd ?? 1);
+                          else alvo.preco = novo;
+                        })
+                      }
+                    />
+                    <div className="mt-0.5 text-right text-[11px] text-cinza">
+                      {temEmbalagem(c) ? `${eurosFino(precoConsumivel(c))} · da embalagem` : eurosFino(c.preco)}
+                    </div>
                   </td>
                   <td>
                     <Interruptor ligado={c.estimativa} aoMudar={(v) => mudar((d) => void (d.consumiveis[i].estimativa = v))} rotulo="" />
