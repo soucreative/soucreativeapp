@@ -16,6 +16,7 @@ import { ESTADOS } from "@/lib/producao/estados";
 import { dataPt, euros, horasMin, numero, percent } from "@/lib/producao/format";
 import { useModelos } from "@/app/(app)/producao/_lib/modelos";
 import { useCarregado, useDados } from "@/app/(app)/producao/_lib/store";
+import { PERGUNTAS_QUALIDADE, qualidadeAprovada } from "@/lib/producao/qualidade";
 
 /**
  * Folha de obra: documento interno do orçamento. Junta o resumo de custos e
@@ -478,7 +479,8 @@ export default function FolhaObra() {
                 ["Artigos encomendados ao fornecedor", undefined],
                 ["Artigos recebidos e conferidos", undefined],
                 ["Produção iniciada", o.producao?.iniciadoEm],
-                ["Produção concluída e controlo de qualidade", o.producao?.prontoEm ?? o.produzidoEm],
+                ["Controlo de qualidade (abaixo)", qualidadeAprovada(o.producao?.qualidade) ? o.producao?.qualidade?.feitoEm : undefined],
+                ["Produção concluída, pronto para entrega", o.producao?.prontoEm ?? o.produzidoEm],
                 ["Entregue / levantado", o.producao?.entregueEm],
                 ["Faturado · n.º ____________", undefined],
               ].map(([passo, data]) => (
@@ -491,6 +493,41 @@ export default function FolhaObra() {
               ))}
             </tbody>
           </table>
+        </section>
+
+        {/* ── Controlo de qualidade ── */}
+        <section className="break-inside-avoid">
+          <Titulo>Controlo de qualidade antes de entregar</Titulo>
+          <table className="w-full text-xs">
+            <tbody>
+              {PERGUNTAS_QUALIDADE.map((q, i) => {
+                const v = o.producao?.qualidade?.respostas[q.id];
+                return (
+                  <tr key={q.id} className="border-b border-linha/60">
+                    <td className="w-8 py-1.5 text-center text-base">{v === "ok" ? "☑" : v === "falha" ? "☒" : "☐"}</td>
+                    <td className="py-1.5">
+                      <b>
+                        {i + 1}. {q.texto}
+                      </b>{" "}
+                      <span className="text-cinza">· {q.ajuda}</span>
+                    </td>
+                    <td className="w-28 py-1.5 text-right text-cinza">
+                      {v === "na" ? "não se aplica" : v === "falha" ? <span className="text-alerta">falha</span> : q.podeNaoAplicar ? "☐ não se aplica" : ""}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {o.producao?.qualidade ? (
+            <p className="mt-1 text-xs text-cinza">
+              Verificado a {dataPt(o.producao.qualidade.feitoEm)}
+              {dados.equipa.find((m) => m.id === o.producao?.qualidade?.porId) ? ` por ${dados.equipa.find((m) => m.id === o.producao?.qualidade?.porId)!.nome}` : ""}
+              {o.producao.qualidade.notas ? ` · ${o.producao.qualidade.notas}` : ""}
+            </p>
+          ) : (
+            <p className="mt-1 text-xs text-cinza">Verificado por ______________________ · Data ____/____/______</p>
+          )}
         </section>
 
         {(o.notas || o.producao?.notas) && (

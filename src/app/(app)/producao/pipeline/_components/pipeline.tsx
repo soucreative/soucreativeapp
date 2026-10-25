@@ -8,7 +8,9 @@ import { etapaDe, ETAPAS, ordenarFila, planear, preverNovo, type Planeado } from
 import { calcularOrcamento, NOME_TECNICA, totalParaListas } from "@/lib/producao/engine";
 import { dataPt, euros, horasMin } from "@/lib/producao/format";
 import { atualizarProducao, moverEtapa, useDados } from "@/app/(app)/producao/_lib/store";
+import { qualidadeAprovada } from "@/lib/producao/qualidade";
 import type { EtapaProducao, Orcamento } from "@/lib/producao/types";
+import { EtiquetaQualidade, FormQualidade } from "./qualidade";
 
 const ATIVAS: EtapaProducao[] = ["por_iniciar", "em_producao", "pronto"];
 
@@ -144,8 +146,10 @@ function Linha({
   aoSubir: () => void;
   aoDescer: () => void;
 }) {
-  const p = useDados().parametros;
+  const dadosLinha = useDados();
+  const p = dadosLinha.parametros;
   const [aberta, setAberta] = useState(false);
+  const [aVerificar, setAVerificar] = useState(false);
   const r = previsto?.r ?? calcularOrcamento(p, o);
   const etapa = etapaDe(o)!;
   const i = ETAPAS.findIndex((e) => e.id === etapa);
@@ -191,6 +195,9 @@ function Linha({
         <td className="whitespace-nowrap">
           <span className={`mr-1 inline-block text-[10px] text-cinza transition-transform ${aberta ? "rotate-90" : ""}`}>▶</span>
           <span className="font-semibold text-verde">{o.numero}</span>
+          <span className="ml-1">
+            <EtiquetaQualidade cq={o.producao?.qualidade} />
+          </span>
         </td>
         <td>
           <div className="font-medium">{cliente ?? "sem cliente"}</div>
@@ -243,6 +250,8 @@ function Linha({
             <button
               className="botao-principal px-2 py-0.5 text-xs"
               onClick={() => {
+                // Antes de pronto, o controlo de qualidade
+                if (seguinte.id === "pronto" && !qualidadeAprovada(o.producao?.qualidade)) return setAVerificar(true);
                 if (seguinte.id === "pronto" && !o.produzidoEm && !confirm("Marcar como pronto? O consumo estimado sai do stock de consumíveis.")) return;
                 void moverEtapa(o.id, seguinte.id);
               }}
@@ -252,6 +261,26 @@ function Linha({
           )}
         </td>
       </tr>
+      {aVerificar && (
+        <tr className="bg-papel">
+          <td />
+          <td colSpan={8} className="pb-4">
+            <FormQualidade
+              o={o}
+              nomesArtigos={linhas.map((l) => dadosLinha.artigos.find((a) => a.id === l.artigoId)?.nome ?? "")}
+              equipa={equipa}
+              aoCancelar={() => setAVerificar(false)}
+              aoGravar={(qualidade, aprovado) => {
+                atualizarProducao(o.id, { qualidade });
+                setAVerificar(false);
+                if (aprovado && (o.produzidoEm || confirm("Controlo feito. Passar a pronto? O consumo estimado sai do stock de consumíveis."))) {
+                  void moverEtapa(o.id, "pronto");
+                }
+              }}
+            />
+          </td>
+        </tr>
+      )}
       {aberta && (
         <tr className="bg-papel">
           <td />

@@ -20,6 +20,17 @@ export interface Producao {
   iniciadoEm?: string;
   prontoEm?: string;
   entregueEm?: string;
+  // Controlo de qualidade feito antes de passar a pronto (ver lib/producao/qualidade.ts)
+  qualidade?: ControloQualidade;
+}
+
+export type RespostaQualidade = "ok" | "falha" | "na";
+
+export interface ControloQualidade {
+  feitoEm: string;
+  porId?: string; // quem verificou (colaborador)
+  respostas: Record<string, RespostaQualidade>;
+  notas?: string;
 }
 
 export type TipoSetup =
