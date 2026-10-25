@@ -479,7 +479,7 @@ export default function FolhaObra() {
                 ["Artigos encomendados ao fornecedor", undefined],
                 ["Artigos recebidos e conferidos", undefined],
                 ["Produção iniciada", o.producao?.iniciadoEm],
-                ["Controlo de qualidade (abaixo)", qualidadeAprovada(o.producao?.qualidade) ? o.producao?.qualidade?.feitoEm : undefined],
+                ["Controlo de qualidade", qualidadeAprovada(o.producao?.qualidade) ? o.producao?.qualidade?.feitoEm : undefined],
                 ["Produção concluída, pronto para entrega", o.producao?.prontoEm ?? o.produzidoEm],
                 ["Entregue / levantado", o.producao?.entregueEm],
                 ["Faturado · n.º ____________", undefined],
@@ -495,38 +495,38 @@ export default function FolhaObra() {
           </table>
         </section>
 
-        {/* ── Controlo de qualidade ── */}
+        {/* ── Controlo de qualidade: o resultado, feito no pipeline ao passar a pronto ── */}
         <section className="break-inside-avoid">
-          <Titulo>Controlo de qualidade antes de entregar</Titulo>
-          <table className="w-full text-xs">
-            <tbody>
-              {PERGUNTAS_QUALIDADE.map((q, i) => {
-                const v = o.producao?.qualidade?.respostas[q.id];
-                return (
-                  <tr key={q.id} className="border-b border-linha/60">
-                    <td className="w-8 py-1.5 text-center text-base">{v === "ok" ? "☑" : v === "falha" ? "☒" : "☐"}</td>
-                    <td className="py-1.5">
-                      <b>
-                        {i + 1}. {q.texto}
-                      </b>{" "}
-                      <span className="text-cinza">· {q.ajuda}</span>
-                    </td>
-                    <td className="w-28 py-1.5 text-right text-cinza">
-                      {v === "na" ? "não se aplica" : v === "falha" ? <span className="text-alerta">falha</span> : q.podeNaoAplicar ? "☐ não se aplica" : ""}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <Titulo>Controlo de qualidade</Titulo>
           {o.producao?.qualidade ? (
-            <p className="mt-1 text-xs text-cinza">
-              Verificado a {dataPt(o.producao.qualidade.feitoEm)}
-              {dados.equipa.find((m) => m.id === o.producao?.qualidade?.porId) ? ` por ${dados.equipa.find((m) => m.id === o.producao?.qualidade?.porId)!.nome}` : ""}
-              {o.producao.qualidade.notas ? ` · ${o.producao.qualidade.notas}` : ""}
-            </p>
+            <>
+              <table className="w-full text-xs">
+                <tbody>
+                  {PERGUNTAS_QUALIDADE.map((q, i) => {
+                    const v = o.producao?.qualidade?.respostas[q.id];
+                    return (
+                      <tr key={q.id} className="border-b border-linha/60">
+                        <td className="py-1">
+                          {i + 1}. {q.texto}
+                        </td>
+                        <td className={`w-28 py-1 text-right ${v === "falha" ? "font-medium text-alerta" : v === "ok" ? "text-verde" : "text-cinza"}`}>
+                          {v === "ok" ? "✓ está bem" : v === "falha" ? "✗ falha" : v === "na" ? "não se aplica" : "—"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <p className="mt-1 text-xs text-cinza">
+                Verificado a {dataPt(o.producao.qualidade.feitoEm)}
+                {dados.equipa.find((m) => m.id === o.producao?.qualidade?.porId)
+                  ? ` por ${dados.equipa.find((m) => m.id === o.producao?.qualidade?.porId)!.nome}`
+                  : ""}
+                {o.producao.qualidade.notas ? ` · ${o.producao.qualidade.notas}` : ""}
+              </p>
+            </>
           ) : (
-            <p className="mt-1 text-xs text-cinza">Verificado por ______________________ · Data ____/____/______</p>
+            <p className="text-xs text-cinza">Por fazer. Faz-se no pipeline, ao carregar em "Pronto →".</p>
           )}
         </section>
 
