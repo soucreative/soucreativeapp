@@ -526,7 +526,7 @@ export default function FolhaObra() {
               </p>
             </>
           ) : (
-            <p className="text-xs text-cinza">Por fazer. Faz-se no pipeline, ao carregar em "Pronto →".</p>
+            <p className="text-xs text-cinza">Por fazer. Faz-se no pipeline, ao carregar em &quot;Pronto →&quot;.</p>
           )}
         </section>
 
